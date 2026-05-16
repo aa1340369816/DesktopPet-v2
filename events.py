@@ -1562,7 +1562,8 @@ class EventScheduler:
         parts = []
         for attr, val in effects.items():
             if attr == "sick":
-                parts.append("生病了！" if val else "")
+                if val:
+                    parts.append("生病了！")
                 continue
             display = name_map.get(attr, attr)
             if val > 0:
@@ -1576,15 +1577,15 @@ class EventScheduler:
             return
         effects = choice["effects"]
         self._apply_effects(effects)
-        # 浮动文字
+        # 浮动效果数值（像弹幕飘过）
         if self.float_callback:
             effect_list = self._format_effects(effects)
             if effect_list:
                 self.float_callback(effect_list)
-        # 结果描述仍用 info 显示
+        # 结果文字显示在宠物头顶（复用叙事窗口样式）
         result_text = choice.get("result", "")
         if result_text:
-            self.info(result_text)
+            self.narrative_callback(result_text, event.get("name", ""))
     
     def _apply_effects(self, effects):
         """将效果字典应用到 PetState"""
