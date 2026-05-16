@@ -1426,7 +1426,7 @@ class ChoiceWindow:
 
 # ==================== 事件调度器 ====================
 class EventScheduler:
-    def __init__(self, pet_state, toast_callback, info_callback):
+    def __init__(self, pet_state, toast_callback, info_callback, float_callback=None):
         """
         pet_state: PetState 实例
         toast_callback: 用于显示短暂提示的函数 (msg, duration)
@@ -1435,6 +1435,7 @@ class EventScheduler:
         self.state = pet_state
         self.toast = toast_callback
         self.info = info_callback
+        self.float_callback = float_callback
         
         # 冷却记录：{event_id: last_trigger_timestamp}
         self.cooldowns = {}
@@ -1518,12 +1519,14 @@ class EventScheduler:
         if etype == "instant":
             effects = event["effects"]
             self._apply_effects(effects)
-            # 构造效果文字
-            effect_text = self._format_effects(effects)
+            # 浮动文字
+            if self.float_callback:
+                effect_list = self._format_effects(effects)
+                if effect_list:
+                    self.float_callback(effect_list)
+            # toast 只显示文字描述
             toast_msg = event.get("toast", event["description"])
-            if effect_text:
-                toast_msg = toast_msg + "\n" + effect_text
-            self.toast(toast_msg, 4000)  # 延长到4秒，方便看效果
+            self.toast(toast_msg, 4000)
         
         elif etype == "narrative":
             if event["effects"]:
@@ -1565,22 +1568,22 @@ class EventScheduler:
                 parts.append(f"{display}+{val}")
             elif val < 0:
                 parts.append(f"{display}{val}")  # 负号自动带
-        return "  ".join(parts)
+        return parts   # 直接返回列表，每个元素是 "饱食+5" 这样的字符串
     
     def _on_choice_made(self, event, choice):
         if choice is None:
             return
         effects = choice["effects"]
         self._apply_effects(effects)
-        # 显示选项结果 + 具体效果
+        # 浮动文字
+        if self.float_callback:
+            effect_list = self._format_effects(effects)
+            if effect_list:
+                self.float_callback(effect_list)
+        # 结果描述仍用 info 显示
         result_text = choice.get("result", "")
-        effect_text = self._format_effects(effects)
-        if result_text and effect_text:
-            self.info(result_text + "\n" + effect_text)
-        elif result_text:
+        if result_text:
             self.info(result_text)
-        elif effect_text:
-            self.info(effect_text)
     
     def _apply_effects(self, effects):
         """将效果字典应用到 PetState"""
