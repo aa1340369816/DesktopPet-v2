@@ -433,61 +433,73 @@ class DesktopPet:
     def do_part_time_job(self, job):
         s = self.state
         if job == "便利店兼职":
-            s.gold += 20
-            msg = "完成便利店兼职，金币+20"
+            duration = 3600          # 1小时
+            game_hours = 1
+            def effect(state):
+                state.gold += 20
+                state.gain_exp(5)
         elif job == "咖啡店打工":
-            s.gold += 15
-            s.charm += 3
-            msg = "完成咖啡店打工，金币+15，魅力+3"
+            duration = 3600
+            game_hours = 1
+            def effect(state):
+                state.gold += 15
+                state.charm += 3
+                state.gain_exp(5)
         elif job == "快递分拣":
-            s.gold += 30
-            s.stamina = max(0, s.stamina-15)
-            msg = "完成快递分拣，金币+30，体力-15"
+            duration = 5400          # 1.5小时
+            game_hours = 1.5
+            def effect(state):
+                state.gold += 30
+                state.stamina = max(0, state.stamina - 15)
+                state.gain_exp(5)
         else:
             return
-        self.show_toast(msg)
-        s.gain_exp(5)
-        s.save()
+        self.start_activity(job, 0, duration, effect, game_hours=game_hours)
 
     def buy_training(self, course):
         s = self.state
-        cost = 30
-        gain = 8
         if "进阶" in course:
             cost = 60
             gain = 15
-        if s.gold < cost:
-            self.show_info("金币不足")
-            return
-        s.gold -= cost
-        if "声乐" in course:
-            s.vocal += gain
-            msg = f"声乐培训完成，唱功+{gain}"
-        elif "舞蹈" in course:
-            s.dance += gain
-            msg = f"舞蹈培训完成，舞蹈+{gain}"
-        elif "表演" in course:
-            s.acting += gain
-            msg = f"表演培训完成，演技+{gain}"
+            duration = 5400      # 1.5小时
+            game_hours = 1.5
         else:
-            msg = "培训完成"
-        self.show_toast(msg)
-        s.gain_exp(10)
-        s.save()
+            cost = 30
+            gain = 8
+            duration = 3600      # 1小时
+            game_hours = 1
+        if "声乐" in course:
+            attr = "vocal"
+        elif "舞蹈" in course:
+            attr = "dance"
+        elif "表演" in course:
+            attr = "acting"
+        else:
+            attr = None
+
+        def effect(state):
+            if attr:
+                setattr(state, attr, getattr(state, attr) + gain)
+            state.gain_exp(10)
+
+        self.start_activity(course, cost, duration, effect, game_hours=game_hours)
 
     def street_performance(self):
         s = self.state
-        gain = random.randint(1,5)
-        s.charm += 5
-        if random.random() < 0.5:
-            s.vocal += gain
-            msg = f"街头表演结束，唱功+{gain}"
-        else:
-            s.dance += gain
-            msg = f"街头表演结束，舞蹈+{gain}"
-        self.show_toast(msg)
-        s.gain_exp(5)
-        s.save()
+        gain = random.randint(1, 5)
+        is_vocal = random.random() < 0.5
+
+        def effect(state):
+            if is_vocal:
+                state.vocal += gain
+                msg = f"街头表演结束，唱功+{gain}"
+            else:
+                state.dance += gain
+                msg = f"街头表演结束，舞蹈+{gain}"
+            state.charm += 5
+            state.gain_exp(5)
+
+        self.start_activity("街头表演", 0, 3600, effect, game_hours=1)
 
     def start_interview(self):
         s = self.state
@@ -521,7 +533,7 @@ class DesktopPet:
         self.show_toast(f"使用 {name}")
         self.start_activity(name, 0, duration, effect_func)
 
-    def start_activity(self, name, price, duration, effect_func):
+    def start_activity(self, name, price, duration, effect_func, game_hours=0):
         s = self.state
         if price > 0 and s.gold < price:
             self.show_info("金币不足！")
@@ -530,6 +542,8 @@ class DesktopPet:
             s.gold -= price
         def on_finish():
             effect_func(s)
+            if game_hours > 0:
+                s.game_time.advance_hours(game_hours)
             self.show_toast(f"✅ {name}完成")
             s.save()
         def on_cancel():
