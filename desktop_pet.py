@@ -18,6 +18,7 @@ from shop_window import ShopWindow
 from status_window import StatusWindow
 from performance_window import PerformanceWindow
 from activity_monitor import ActivityMonitor
+from events import EventScheduler, EVENT_POOL
 
 class DesktopPet:
     def __init__(self, image_folder="pet_frames"):
@@ -77,6 +78,13 @@ class DesktopPet:
         threading.Thread(target=self.tray.run, daemon=True).start()
 
         self.drag_data = {"x": 0, "y": 0}
+
+        # 创建事件调度器
+        self.event_scheduler = EventScheduler(
+            self.state,
+            self.show_toast,
+            self.show_info
+        )
 
     # ---------- 后台缓存生成 ----------
     def _generate_caches_async(self):
@@ -680,6 +688,10 @@ class DesktopPet:
             s.last_danmu_time = now
             s.danmu_interval = random.randint(120, 300)
         self.check_daytime_greeting(now)
+
+        # 随机事件检查
+        self.event_scheduler.update(self.pet_win)
+
         self.root.after(1000, self.companion_loop)
 
     def check_daytime_greeting(self, now):
