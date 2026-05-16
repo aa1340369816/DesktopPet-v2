@@ -1426,7 +1426,7 @@ class ChoiceWindow:
 
 # ==================== 事件调度器 ====================
 class EventScheduler:
-    def __init__(self, pet_state, toast_callback, info_callback, float_callback=None):
+    def __init__(self, pet_state, toast_callback, info_callback, float_callback=None, narrative_callback=None):
         """
         pet_state: PetState 实例
         toast_callback: 用于显示短暂提示的函数 (msg, duration)
@@ -1436,6 +1436,7 @@ class EventScheduler:
         self.toast = toast_callback
         self.info = info_callback
         self.float_callback = float_callback
+        self.narrative_callback = narrative_callback if narrative_callback else info_callback
         
         # 冷却记录：{event_id: last_trigger_timestamp}
         self.cooldowns = {}
@@ -1531,7 +1532,7 @@ class EventScheduler:
         elif etype == "narrative":
             if event["effects"]:
                 self._apply_effects(event["effects"])
-            self.info(event["description"])
+            self.narrative_callback(event["description"], event.get("name", ""))
         
         elif etype == "choice":
             if self.current_choice_win and self.current_choice_win.win.winfo_exists():
