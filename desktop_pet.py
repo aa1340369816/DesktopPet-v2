@@ -79,12 +79,12 @@ class DesktopPet:
 
         self.drag_data = {"x": 0, "y": 0}
 
-        # 创建事件调度器
         self.event_scheduler = EventScheduler(
             self.state,
             self.show_toast,
             self.show_info,
-            self.show_float_text   # 新增
+            self.show_float_text,
+            self.show_narrative_window   # 新增
         )
 
     # ---------- 后台缓存生成 ----------
@@ -629,6 +629,59 @@ class DesktopPet:
             except:
                 if popup in self.active_notifications:
                     self.active_notifications.remove(popup)
+
+    def show_narrative_window(self, text, title=""):
+        """在宠物头顶显示叙事事件窗口，可手动关闭，会跟随宠物移动"""
+        win = tk.Toplevel(self.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.configure(bg="#2E2E2E")
+        win.attributes("-alpha", 0.92)
+        
+        # 窗口宽度根据文字多少自适应
+        w = 320
+        h = 130
+        if len(text) > 80:
+            h = 160
+        
+        # 计算位置：宠物头顶居中
+        x = self.x + (self.pet_w - w) // 2
+        y = self.y - h - 10
+        if y < 0:
+            y = self.y + self.pet_h + 10
+        win.geometry(f"{w}x{h}+{x}+{y}")
+        
+        # 标题栏
+        if title:
+            title_label = tk.Label(win, text=title, font=("微软雅黑", 11, "bold"),
+                                   fg="#FFD700", bg="#2E2E2E")
+            title_label.pack(pady=(10, 0))
+        
+        # 正文
+        desc_label = tk.Label(win, text=text, font=("微软雅黑", 10),
+                              fg="white", bg="#2E2E2E",
+                              wraplength=280, justify="left")
+        desc_label.pack(pady=10, padx=20)
+        
+        # 关闭按钮
+        close_btn = tk.Button(win, text="我知道了", command=win.destroy,
+                              bg="#555555", fg="white", font=("微软雅黑", 9))
+        close_btn.pack(pady=(0, 10))
+        
+        # 让窗口跟随宠物移动
+        def follow():
+            if win.winfo_exists():
+                nx = self.x + (self.pet_w - w) // 2
+                ny = self.y - h - 10
+                if ny < 0:
+                    ny = self.y + self.pet_h + 10
+                win.geometry(f"+{nx}+{ny}")
+                win.after(200, follow)
+        follow()
+        
+        # 点击窗口其他区域也可以关闭（方便）
+        win.bind("<Button-1>", lambda e: win.destroy())
+
 
     def show_float_text(self, texts):
         """在宠物头顶飘出浮动文字，texts 是列表如 ['饱食+5', '心情+3']"""
