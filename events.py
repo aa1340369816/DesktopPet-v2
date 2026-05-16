@@ -1432,7 +1432,7 @@ class EventScheduler:
             self.cooldowns = pet_state.event_cooldowns
         
         # 下次事件检查时间（初始设为5分钟后）
-        self.next_check_time = time.time() + 300
+        self.next_check_time = time.time() + 10
         
         # 用于存储当前打开的选择窗口，避免同时打开多个
         self.current_choice_win = None
@@ -1448,7 +1448,7 @@ class EventScheduler:
             return
         
         # 重置下次检查时间（5~30分钟随机间隔）
-        self.next_check_time = now + random.randint(300, 1800)
+        self.next_check_time = now + 30   # 每次等 30 秒就尝试触发
         
         # 概率检查（50%）
         if random.random() > 0.5:
