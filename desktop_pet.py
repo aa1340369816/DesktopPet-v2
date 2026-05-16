@@ -631,14 +631,14 @@ class DesktopPet:
                     self.active_notifications.remove(popup)
 
     def show_narrative_window(self, text, title=""):
-        """在宠物头顶显示叙事事件窗口，可手动关闭，会跟随宠物移动"""
+        """在宠物头顶显示叙事事件窗口，自动消失（时间按文字长度计算），可手动关闭，会跟随宠物移动"""
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#2E2E2E")
         win.attributes("-alpha", 0.92)
         
-        # 窗口宽度根据文字多少自适应
+        # 窗口宽度
         w = 320
         h = 130
         if len(text) > 80:
@@ -663,7 +663,10 @@ class DesktopPet:
                               wraplength=280, justify="left")
         desc_label.pack(pady=10, padx=20)
         
-        # 关闭按钮
+        # 自动关闭时间：每个字0.3秒，最少3秒，最多15秒
+        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
+        
+        # 关闭按钮（可选，也可以点任意位置关闭）
         close_btn = tk.Button(win, text="我知道了", command=win.destroy,
                               bg="#555555", fg="white", font=("微软雅黑", 9))
         close_btn.pack(pady=(0, 10))
@@ -679,8 +682,11 @@ class DesktopPet:
                 win.after(200, follow)
         follow()
         
-        # 点击窗口其他区域也可以关闭（方便）
+        # 点击窗口任意位置关闭
         win.bind("<Button-1>", lambda e: win.destroy())
+        
+        # 自动关闭定时器
+        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
 
 
     def show_float_text(self, texts):
