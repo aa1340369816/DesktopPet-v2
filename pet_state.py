@@ -65,6 +65,8 @@ class PetState:
         self.focus_end_time = 0
         self.focus_duration = 25 * 60
 
+        self.event_cooldowns = {}   # 事件冷却记录
+
     @property
     def pet_w(self):
         return int(self.base_w * self.scale)
@@ -291,7 +293,8 @@ class PetState:
             'last_milestone_week': self.last_milestone_week,
             'last_milestone_day': self.last_milestone_day,
             'inventory': self.inventory,
-            'scale': self.scale
+            'scale': self.scale,
+            'event_cooldowns': self.event_cooldowns
         }
 
     def from_dict(self, d):
@@ -328,6 +331,7 @@ class PetState:
         self.last_milestone_day = d.get('last_milestone_day', 0)
         self.inventory = d.get('inventory', {})
         self.scale = d.get('scale', 1.5)
+        self.event_cooldowns = d.get('event_cooldowns', {})
 
     def save(self):
         try:
