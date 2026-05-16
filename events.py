@@ -1365,24 +1365,34 @@ EVENT_POOL = [
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
     """用于显示二选一事件的小窗口"""
-    def __init__(self, parent, event, on_choose):
+    def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
         self.win.configure(bg="#2E2E2E")
         self.win.attributes("-alpha", 0.95)
         
-        # 窗口尺寸和位置（居中在宠物附近）
-        w, h = 320, 180
-        x = parent.winfo_rootx() + 50
-        y = parent.winfo_rooty() + 50
+        # 窗口尺寸
+        w, h = 360, 220
+        
+        # 固定在宠物头顶正上方
+        x = pet_x + (pet_w - w) // 2
+        y = pet_y - h - 10  # 宠物上方10像素
+        # 防止超出屏幕上边界
+        if y < 0:
+            y = pet_y + pet_h + 10
         self.win.geometry(f"{w}x{h}+{x}+{y}")
         
-        # 事件描述
+        # 事件标题
+        name_label = tk.Label(self.win, text=event.get("name", ""), 
+                              font=("微软雅黑", 11, "bold"), fg="#FFD700", bg="#2E2E2E")
+        name_label.pack(pady=(15, 5))
+        
+        # 事件描述（自动换行，最多显示4行）
         desc_label = tk.Label(self.win, text=event["description"], 
                               font=("微软雅黑", 10), fg="white", bg="#2E2E2E",
-                              wraplength=280, justify="left")
-        desc_label.pack(pady=15, padx=20)
+                              wraplength=320, justify="left")
+        desc_label.pack(pady=(0, 10), padx=20)
         
         # 按钮框架
         btn_frame = tk.Frame(self.win, bg="#2E2E2E")
@@ -1394,23 +1404,24 @@ class ChoiceWindow:
             on_choose(choice)
         
         for i, choice in enumerate(event["choices"]):
-            btn = tk.Button(btn_frame, text=choice["text"], 
+            # 选项文字如果超过18个字就截断加省略号
+            btn_text = choice["text"]
+            if len(btn_text) > 18:
+                btn_text = btn_text[:17] + "…"
+            
+            btn = tk.Button(btn_frame, text=btn_text, 
                             font=("微软雅黑", 9), fg="white",
                             bg="#555555" if i==0 else "#444444",
                             activebackground="#777777",
-                            width=16, height=2,
+                            width=18, height=2,
+                            wraplength=140,       # 按钮内文字超过140像素自动换行
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(side=tk.LEFT, padx=10)
+            btn.pack(side=tk.LEFT, padx=12)
         
-        # 自动关闭计时器（10秒不选则默认取消）
-        self.timer_id = parent.after(10000, self._auto_close)
-        self.on_choose = on_choose
-    
-    def _auto_close(self):
-        if self.win.winfo_exists():
-            self.win.destroy()
-            # 传 None 表示未选择
-            self.on_choose(None)
+        # 底部提示
+        tip_label = tk.Label(self.win, text="请选择一个选项（不会自动关闭）", 
+                             font=("微软雅黑", 8), fg="#999999", bg="#2E2E2E")
+        tip_label.pack(pady=(10, 5))
 
 
 # ==================== 事件调度器 ====================
@@ -1505,33 +1516,71 @@ class EventScheduler:
         self._save_cooldowns()
         
         if etype == "instant":
-            self._apply_effects(event["effects"])
+            effects = event["effects"]
+            self._apply_effects(effects)
+            # 构造效果文字
+            effect_text = self._format_effects(effects)
             toast_msg = event.get("toast", event["description"])
-            self.toast(toast_msg, 3000)
+            if effect_text:
+                toast_msg = toast_msg + "\n" + effect_text
+            self.toast(toast_msg, 4000)  # 延长到4秒，方便看效果
         
         elif etype == "narrative":
-            # 叙事类：显示 longer 提示，也应用微小效果（如果有）
             if event["effects"]:
                 self._apply_effects(event["effects"])
             self.info(event["description"])
         
         elif etype == "choice":
-            # 确保没有同时打开的选择窗口
             if self.current_choice_win and self.current_choice_win.win.winfo_exists():
                 return
+            # 获取宠物窗口位置和尺寸
+            pet_x = parent_window.winfo_rootx()
+            pet_y = parent_window.winfo_rooty()
+            pet_w = parent_window.winfo_width()
+            pet_h = parent_window.winfo_height()
             self.current_choice_win = ChoiceWindow(
                 parent_window,
                 event,
-                lambda choice: self._on_choice_made(event, choice)
+                lambda choice: self._on_choice_made(event, choice),
+                pet_x, pet_y, pet_w, pet_h
             )
+
+    def _format_effects(self, effects):
+        """将效果字典格式化为可读文字，如：饱食+5  心情+3  金币-10"""
+        if not effects:
+            return ""
+        name_map = {
+            "satiety": "饱食", "stamina": "体力", "hygiene": "清洁", "mood": "心情",
+            "gold": "金币", "vocal": "唱功", "dance": "舞蹈", "acting": "演技",
+            "variety": "综艺", "charm": "魅力", "popularity": "人气", "fans": "粉丝",
+            "fatigue": "疲劳", "sick": "生病"
+        }
+        parts = []
+        for attr, val in effects.items():
+            if attr == "sick":
+                parts.append("生病了！" if val else "")
+                continue
+            display = name_map.get(attr, attr)
+            if val > 0:
+                parts.append(f"{display}+{val}")
+            elif val < 0:
+                parts.append(f"{display}{val}")  # 负号自动带
+        return "  ".join(parts)
     
     def _on_choice_made(self, event, choice):
         if choice is None:
-            return  # 超时未选
-        self._apply_effects(choice["effects"])
+            return
+        effects = choice["effects"]
+        self._apply_effects(effects)
+        # 显示选项结果 + 具体效果
         result_text = choice.get("result", "")
-        if result_text:
+        effect_text = self._format_effects(effects)
+        if result_text and effect_text:
+            self.info(result_text + "\n" + effect_text)
+        elif result_text:
             self.info(result_text)
+        elif effect_text:
+            self.info(effect_text)
     
     def _apply_effects(self, effects):
         """将效果字典应用到 PetState"""
