@@ -83,7 +83,8 @@ class DesktopPet:
         self.event_scheduler = EventScheduler(
             self.state,
             self.show_toast,
-            self.show_info
+            self.show_info,
+            self.show_float_text   # 新增
         )
 
     # ---------- 后台缓存生成 ----------
@@ -629,6 +630,39 @@ class DesktopPet:
                 if popup in self.active_notifications:
                     self.active_notifications.remove(popup)
 
+    def show_float_text(self, texts):
+        """在宠物头顶飘出浮动文字，texts 是列表如 ['饱食+5', '心情+3']"""
+        base_x = self.x + self.pet_w // 2
+        base_y = self.y - 20
+        for i, text in enumerate(texts):
+            # 每个文字错开一点位置
+            offset_x = (i % 3 - 1) * 40   # -40, 0, 40
+            offset_y = -(i // 3) * 25
+            win = tk.Toplevel(self.pet_win)
+            win.overrideredirect(True)
+            win.wm_attributes("-topmost", True)
+            win.wm_attributes("-transparentcolor", "#F0F0F0")
+            win.configure(bg="#F0F0F0")
+            label = tk.Label(win, text=text, font=("微软雅黑", 12, "bold"),
+                             fg="#FFD700", bg="#F0F0F0")
+            label.pack()
+            win.geometry(f"+{base_x + offset_x}+{base_y + offset_y}")
+            self._animate_float(win, 0)
+
+    def _animate_float(self, win, step):
+        if not win.winfo_exists():
+            return
+        if step >= 30:
+            win.destroy()
+            return
+        x = win.winfo_x()
+        y = win.winfo_y() - 2  # 向上移动
+        alpha = 1.0 - step / 30
+        win.wm_attributes("-alpha", alpha)
+        win.geometry(f"+{x}+{y}")
+        self.root.after(50, lambda: self._animate_float(win, step + 1))
+
+    
     def show_danmu(self):
         s = self.state
         pool = []
