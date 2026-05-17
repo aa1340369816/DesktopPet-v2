@@ -5,7 +5,7 @@ from event_pool import EVENT_POOL
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
-    """极简二选一窗口：白底黑字、细线分隔、按钮带边框"""
+    """极简二选一窗口：白底黑字、自适应高度、文字不截断"""
     def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
         self.parent = parent
         self.win = tk.Toplevel(parent)
@@ -14,13 +14,14 @@ class ChoiceWindow:
         self.win.configure(bg="#FFFFFF")
         self.win.attributes("-alpha", 1.0)
 
-        self.w = 360
-        self.h = 220
+        self.w = 380  # 稍微加宽一点，给文字更多空间
 
-        # 事件标题
-        name_label = tk.Label(self.win, text=event.get("name", ""),
-                              font=("Segoe UI", 14, "bold"), fg="#000000", bg="#FFFFFF")
-        name_label.pack(pady=(24, 0))
+        # ---- 构建内容 ----
+        # 标题
+        title_text = event.get("name", "")
+        title_label = tk.Label(self.win, text=title_text,
+                               font=("Segoe UI", 14, "bold"), fg="#000000", bg="#FFFFFF")
+        title_label.pack(pady=(24, 0))
 
         # 分隔线
         sep = tk.Frame(self.win, height=1, bg="#E5E5E5")
@@ -38,38 +39,51 @@ class ChoiceWindow:
 
         def make_choice(choice_idx):
             self.win.destroy()
-            choice = event["choices"][choice_idx]
-            on_choose(choice)
+            on_choose(event["choices"][choice_idx])
 
         for i, choice in enumerate(event["choices"]):
             btn_text = choice["text"]
-            if len(btn_text) > 18:
-                btn_text = btn_text[:17] + "…"
+            # 仅保留极端情况的截断（超过 22 字截断），正常文字完整显示
+            if len(btn_text) > 22:
+                btn_text = btn_text[:21] + "…"
 
             btn = tk.Button(btn_frame, text=btn_text,
                             font=("Segoe UI", 12), fg="#000000", bg="#FFFFFF",
                             activebackground="#F5F5F5",
                             bd=1, relief="solid",
-                            width=16, height=2,
-                            wraplength=140,
+                            width=16, height=2,          # 保持按钮大小一致
+                            wraplength=180,               # 放宽换行宽度
+                            justify="center",
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(side=tk.LEFT, padx=8)
+            btn.pack(side=tk.LEFT, padx=8, pady=4)      # 增加内边距
 
-        # 底部提示（辅助文字）
+        # 底部提示
         tip_label = tk.Label(self.win, text="请选择一个选项",
                              font=("Segoe UI", 10), fg="#808080", bg="#FFFFFF")
         tip_label.pack(pady=(0, 16))
 
-        # 跟随宠物移动
+        # ---- 自适应高度计算 ----
+        self.win.update_idletasks()
+        req_height = self.win.winfo_reqheight()
+        # 给一个合理范围
+        if req_height < 200:
+            req_height = 200
+        if req_height > 500:
+            req_height = 500
+        self.h = req_height
+
+        # 初始位置
         self._update_position(pet_x, pet_y, pet_w, pet_h)
+        self.win.geometry(f"{self.w}x{self.h}+{self.x}+{self.y}")
+
+        # 跟随宠物移动
         self._follow()
 
     def _update_position(self, pet_x, pet_y, pet_w, pet_h):
-        x = pet_x + (pet_w - self.w) // 2
-        y = pet_y - self.h - 16
-        if y < 0:
-            y = pet_y + pet_h + 16
-        self.win.geometry(f"{self.w}x{self.h}+{x}+{y}")
+        self.x = pet_x + (pet_w - self.w) // 2
+        self.y = pet_y - self.h - 16
+        if self.y < 0:
+            self.y = pet_y + pet_h + 16
 
     def _follow(self):
         if not self.win.winfo_exists():
@@ -79,8 +93,8 @@ class ChoiceWindow:
         pet_w = self.parent.winfo_width()
         pet_h = self.parent.winfo_height()
         self._update_position(pet_x, pet_y, pet_w, pet_h)
+        self.win.geometry(f"+{self.x}+{self.y}")
         self.win.after(200, self._follow)
-
 
 # ==================== 事件调度器 ====================
 class EventScheduler:
