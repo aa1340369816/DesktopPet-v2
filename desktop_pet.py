@@ -185,8 +185,6 @@ class DesktopPet:
             ref_r, ref_g, ref_b = 149, 93, 190
             max_dist = 80
             bg_color = (240, 240, 240, 255)
-            outline_color = (255, 255, 255, 180)   # 原来是 255，现在带一点透明
-            outline_width = 1                       # 从 2 改为 1
             for i, frame in enumerate(reader):
                 img = Image.fromarray(frame).convert("RGBA")
                 arr = np.array(img)
@@ -203,19 +201,7 @@ class DesktopPet:
                 is_bg = (dist_purple < max_dist) & (arr[:,:,3] > 200) & (saturation > 25)
                 mask = is_bg & (~is_tongue)
                 arr[mask] = bg_color
-
-                # === 描边：在角色边缘添加一圈平滑白边 ===
-                # 角色区域 = 非背景区域
-                char_mask = ~mask
-                # 用 scipy 做膨胀（如果没装 scipy，可以用简单的卷积近似）
-                # 这里用纯 numpy 实现一个 3x3 最大值膨胀
-                from scipy.ndimage import binary_dilation
-                dilated = binary_dilation(char_mask, iterations=outline_width)
-                # 描边区域 = 膨胀后的角色区域 - 原始角色区域
-                outline_mask = dilated & (~char_mask)
-                # 把描边区域染成白色
-                arr[outline_mask] = outline_color
-
+                
                 img = Image.fromarray(arr)
                 img.thumbnail((target_w, target_h), Image.LANCZOS)
                 canvas = Image.new("RGBA", (target_w, target_h), bg_color)
