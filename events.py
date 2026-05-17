@@ -1466,7 +1466,7 @@ class EventScheduler:
             return
 
         # 重置下次检查时间
-        self.next_check_time = now + random.randint(300, 1800)
+        self.next_check_time = now + 20  # 30秒一次
 
         # 概率过滤（50%）
         # if random.random() > 0.5:
