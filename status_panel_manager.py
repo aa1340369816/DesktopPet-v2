@@ -137,16 +137,50 @@ class StatusPanelManager:
         win.protocol("WM_DELETE_WINDOW", hide)
 
     def show_status(self):
+        """打开状态窗口（智能定位 + 跟随移动）"""
         if self.pet.status_win and self.pet.status_win.win.winfo_exists():
             self.pet.status_win.win.lift()
             return
+
         self.pet.status_win = StatusWindow(self.pet.pet_win, self.pet.state)
-        self.pet.status_win.win.geometry(f"+{self.pet.x+self.pet.pet_w+10}+{self.pet.y}")
+        win = self.pet.status_win.win
+        win.update_idletasks()
+        win_w = win.winfo_reqwidth()
+        win_h = win.winfo_reqheight()
+
+        def update_position():
+            if not win.winfo_exists():
+                return
+            pet_x = self.pet.x
+            pet_y = self.pet.y
+            pet_w = self.pet.pet_w
+            pet_h = self.pet.pet_h
+            screen_w = self.pet.pet_win.winfo_screenwidth()
+            screen_h = self.pet.pet_win.winfo_screenheight()
+
+            # 水平方向：默认在宠物右侧，空间不够则放左侧
+            if pet_x + pet_w + win_w + 10 <= screen_w:
+                x = pet_x + pet_w + 10
+            else:
+                x = pet_x - win_w - 10
+
+            # 垂直方向：居中于宠物，但不超出屏幕
+            y = pet_y + (pet_h - win_h) // 2
+            if y < 0:
+                y = 0
+            elif y + win_h > screen_h:
+                y = screen_h - win_h
+
+            win.geometry(f"+{x}+{y}")
+            win.after(200, update_position)
+
+        update_position()
 
         def on_close():
             self.pet.status_win.win.destroy()
             self.pet.status_win = None
-        self.pet.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
+
+        win.protocol("WM_DELETE_WINDOW", on_close)
 
     def show_inventory(self):
         inv = self.pet.state.inventory
