@@ -6,7 +6,7 @@ import sys
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from PIL import Image, ImageTk, ImageDraw, ImageFilter
+from PIL import Image, ImageTk, ImageDraw
 import pystray
 import ctypes
 import imageio
@@ -202,20 +202,6 @@ class DesktopPet:
                 mask = is_bg & (~is_tongue)
                 arr[mask] = bg_color
                 
-                # === Alpha 羽化：消除边缘白边 ===
-                # 提取 alpha 通道
-                alpha = arr[:,:,3].copy()
-                # 角色区域（非背景）
-                char_mask = ~mask
-                # 用 PIL 对 alpha 做一次小半径高斯模糊
-                alpha_img = Image.fromarray(alpha, mode='L')
-                alpha_blurred = alpha_img.filter(ImageFilter.GaussianBlur(radius=1.5))
-                alpha_blurred = np.array(alpha_blurred)
-                # 只在角色区域应用模糊后的 alpha（背景保持 255）
-                alpha_new = np.where(char_mask, alpha_blurred, 255)
-                arr[:,:,3] = alpha_new
-                
-                # 缩放并居中放置到画布
                 img = Image.fromarray(arr)
                 img.thumbnail((target_w, target_h), Image.LANCZOS)
                 canvas = Image.new("RGBA", (target_w, target_h), bg_color)
