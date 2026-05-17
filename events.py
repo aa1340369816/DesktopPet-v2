@@ -5,7 +5,7 @@ from event_pool import EVENT_POOL
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
-    """极简二选一窗口：缩小字体、加厚按钮、文字不截断"""
+    """极简二选一窗口：垂直排列按钮，文字永不截断"""
     def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
         self.parent = parent
         self.win = tk.Toplevel(parent)
@@ -16,7 +16,7 @@ class ChoiceWindow:
 
         self.w = 340
 
-        # 标题（减小字号：12pt bold）
+        # 标题
         title_text = event.get("name", "")
         title_label = tk.Label(self.win, text=title_text,
                                font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF")
@@ -26,39 +26,33 @@ class ChoiceWindow:
         sep = tk.Frame(self.win, height=1, bg="#E5E5E5")
         sep.pack(fill="x", padx=20, pady=(12, 0))
 
-        # 描述（缩小字体：10pt）
+        # 描述
         desc_label = tk.Label(self.win, text=event["description"],
                               font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
                               wraplength=280, justify="left")
         desc_label.pack(pady=(16, 0), padx=20)
 
-        # 按钮框架
+        # 按钮框架（垂直排列）
         btn_frame = tk.Frame(self.win, bg="#FFFFFF")
-        btn_frame.pack(pady=16)
+        btn_frame.pack(pady=16, padx=20, fill="x")
 
         def make_choice(choice_idx):
             self.win.destroy()
             on_choose(event["choices"][choice_idx])
 
         for i, choice in enumerate(event["choices"]):
-            btn_text = choice["text"]
-            # 只在极端情况截断（超过24字），正常全部显示
-            if len(btn_text) > 24:
-                btn_text = btn_text[:23] + "…"
-
-            btn = tk.Button(btn_frame, text=btn_text,
+            btn = tk.Button(btn_frame, text=choice["text"],    # 不再截断
                             font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF",
                             activebackground="#F5F5F5",
                             bd=1, relief="solid",
-                            width=14,                 # 按钮宽度（字符）
-                            height=1,                 # 按钮高度（行），用 ipady 加厚
-                            wraplength=200,           # 按钮内换行宽度
-                            justify="center",
-                            padx=8, pady=6,           # 内边距加大，让按钮更厚
+                            justify="left",              # 文字左对齐
+                            wraplength=280,              # 按钮内换行宽度与窗口匹配
+                            padx=12, pady=8,             # 内边距让按钮更厚
+                            anchor="w",                  # 内容靠左
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(side=tk.LEFT, padx=6, pady=4)
+            btn.pack(fill="x", pady=4)                   # 按钮填满宽度，垂直间隔
 
-        # 底部提示（9pt）
+        # 底部提示
         tip_label = tk.Label(self.win, text="请选择一个选项",
                              font=("Segoe UI", 9), fg="#808080", bg="#FFFFFF")
         tip_label.pack(pady=(0, 12))
@@ -66,10 +60,10 @@ class ChoiceWindow:
         # 自适应高度
         self.win.update_idletasks()
         req_height = self.win.winfo_reqheight()
-        if req_height < 180:
-            req_height = 180
-        if req_height > 420:
-            req_height = 420
+        if req_height < 200:
+            req_height = 200
+        if req_height > 500:
+            req_height = 500
         self.h = req_height
 
         self._update_position(pet_x, pet_y, pet_w, pet_h)
