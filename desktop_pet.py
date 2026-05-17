@@ -97,8 +97,6 @@ class DesktopPet:
                 self.ensure_cache_for_scale(scale, "greet")
             if not self.cache_exists(scale, "idle"):
                 self.ensure_cache_for_scale(scale, "idle")
-            if not self.cache_exists(scale, "store"):
-                self.ensure_cache_for_scale(scale, "store")
 
     def _check_cache_thread(self):
         if self.cache_thread and self.cache_thread.is_alive():
