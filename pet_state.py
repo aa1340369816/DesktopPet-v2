@@ -2,7 +2,6 @@ import random
 import os
 import time
 import json
-from game_time import GameTime
 from utils import SAVE_FILE
 
 class PetState:
@@ -56,7 +55,6 @@ class PetState:
         self.stage_name = "素人 👤"
         self.route = 0
 
-        self.game_time = GameTime()
         self.busy = False
         self.train_boost = {"voice": 0, "fitness": 0, "expression": 0, "shape": 0}
         self.mood_decay_reduce = 0
@@ -91,7 +89,6 @@ class PetState:
             self.sick = True
         if self.health < 20 and random.random() < 0.3:
             self.sick = True
-        self.game_time.tick()
         if self.stamina <= 0 and not self.resting:
             self.resting = True
             self.bubble_msg = "体力耗尽，必须休息！"
@@ -286,7 +283,6 @@ class PetState:
             'fans': self.fans, 'exp': self.exp, 'level': self.level,
             'exp_to_next': self.exp_to_next, 'stage': self.stage,
             'stage_name': self.stage_name, 'route': self.route,
-            'game_time': self.game_time.to_dict(),
             'focus_mode': self.focus_mode, 'focus_end_time': self.focus_end_time,
             'focus_duration': self.focus_duration,
             'total_playtime': self.total_playtime,
@@ -321,8 +317,6 @@ class PetState:
         self.stage = d.get('stage', 1)
         self.stage_name = d.get('stage_name', '素人 👤')
         self.route = d.get('route', 0)
-        if 'game_time' in d:
-            self.game_time.from_dict(d['game_time'])
         self.focus_mode = d.get('focus_mode', False)
         self.focus_end_time = d.get('focus_end_time', 0)
         self.focus_duration = d.get('focus_duration', 25 * 60)
