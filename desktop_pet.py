@@ -646,18 +646,40 @@ class DesktopPet:
                     self.active_notifications.remove(popup)
 
     def show_narrative_window(self, text, title=""):
-        """在宠物头顶显示叙事事件窗口，自动消失（时间按文字长度计算），可手动关闭，会跟随宠物移动"""
+        """在宠物头顶显示叙事事件窗口，自动消失，可手动关闭，跟随宠物"""
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#2E2E2E")
         win.attributes("-alpha", 0.92)
         
-        # 窗口宽度
-        w = 320
-        h = 130
-        if len(text) > 80:
-            h = 160
+        # 窗口宽度固定
+        w = 340
+        
+        # 先创建标题和正文，但不 pack，先计算高度
+        # 临时 Label 用于测量所需高度
+        temp_label = tk.Label(win, text=text, font=("微软雅黑", 10),
+                              fg="white", bg="#2E2E2E",
+                              wraplength=300, justify="left")
+        # 计算文本所需高度（多行）
+        # 更新一下让 tkinter 计算尺寸
+        win.update_idletasks()
+        # 获取所需高度
+        req_height = temp_label.winfo_reqheight()
+        temp_label.destroy()
+        
+        # 标题高度估算
+        title_height = 30 if title else 0
+        btn_height = 40
+        pad_total = 50   # 上下边距
+        
+        h = req_height + title_height + btn_height + pad_total
+        # 最小高度
+        if h < 130:
+            h = 130
+        # 最大高度（防止太大超出屏幕）
+        if h > 400:
+            h = 400
         
         # 计算位置：宠物头顶居中
         x = self.x + (self.pet_w - w) // 2
@@ -666,7 +688,7 @@ class DesktopPet:
             y = self.y + self.pet_h + 10
         win.geometry(f"{w}x{h}+{x}+{y}")
         
-        # 标题栏
+        # 标题
         if title:
             title_label = tk.Label(win, text=title, font=("微软雅黑", 11, "bold"),
                                    fg="#FFD700", bg="#2E2E2E")
@@ -675,18 +697,19 @@ class DesktopPet:
         # 正文
         desc_label = tk.Label(win, text=text, font=("微软雅黑", 10),
                               fg="white", bg="#2E2E2E",
-                              wraplength=280, justify="left")
+                              wraplength=300, justify="left")
         desc_label.pack(pady=10, padx=20)
         
-        # 自动关闭时间：每个字0.3秒，最少3秒，最多15秒
-        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
-        
-        # 关闭按钮（可选，也可以点任意位置关闭）
+        # 关闭按钮
         close_btn = tk.Button(win, text="我知道了", command=win.destroy,
                               bg="#555555", fg="white", font=("微软雅黑", 9))
         close_btn.pack(pady=(0, 10))
         
-        # 让窗口跟随宠物移动
+        # 自动关闭时间：每字 0.3 秒，最少 3 秒，最多 15 秒
+        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
+        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
+        
+        # 跟随宠物移动
         def follow():
             if win.winfo_exists():
                 nx = self.x + (self.pet_w - w) // 2
@@ -696,12 +719,6 @@ class DesktopPet:
                 win.geometry(f"+{nx}+{ny}")
                 win.after(200, follow)
         follow()
-        
-        # 点击窗口任意位置关闭
-        win.bind("<Button-1>", lambda e: win.destroy())
-        
-        # 自动关闭定时器
-        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
 
     def refresh_status(self):
         if self.status_win and self.status_win.win.winfo_exists():
