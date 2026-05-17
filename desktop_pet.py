@@ -97,7 +97,8 @@ class DesktopPet:
             self.ui_manager.show_info,
             self.ui_manager.show_float_text,
             self.ui_manager.show_narrative_window,
-            self.refresh_status
+            self.refresh_status,
+            pet=self
         )
 
     def _check_cache_thread(self):
