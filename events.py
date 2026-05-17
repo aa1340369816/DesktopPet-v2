@@ -120,9 +120,6 @@ class EventScheduler:
     def set_action(self, action_name):
         """设置当前活动，如 '便利店兼职'、'训练-voice'、None 表示空闲"""
         self.current_action = action_name
-        # 开始活动时立即允许一次事件检查
-        if action_name is not None:
-            self.next_check_time = time.time()
 
     def update(self, parent_window):
         """在 companion_loop 中每秒调用一次"""
