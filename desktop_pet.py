@@ -175,18 +175,26 @@ class DesktopPet:
         try:
             reader = imageio.get_reader(video_path)
             os.makedirs(cache_dir, exist_ok=True)
+            # 紫色参考色
             ref_r, ref_g, ref_b = 149, 93, 190
-            max_dist = 60
-            red_protect_r = 200
-            red_protect_b = 120
+            max_dist = 80                      # 放宽容差
+            # 舌头保护色 #db5e61
+            tongue_r, tongue_g, tongue_b = 219, 94, 97
+            tongue_max_dist = 40               # 舌头颜色容差
             bg_color = (240, 240, 240, 255)
             for i, frame in enumerate(reader):
                 img = Image.fromarray(frame).convert("RGBA")
                 arr = np.array(img)
-                dist = np.sqrt(np.sum((arr[:,:,:3].astype(np.float32) - np.array([ref_r,ref_g,ref_b]).astype(np.float32))**2, axis=2))
-                is_purple = (dist < max_dist) & (arr[:,:,3] > 200)
-                is_red_tongue = (arr[:,:,0] > red_protect_r) & (arr[:,:,2] < red_protect_b)
-                mask = is_purple & (~is_red_tongue)
+                # 计算每个像素到紫色的距离
+                diff = arr[:,:,:3].astype(np.float32) - np.array([ref_r, ref_g, ref_b], dtype=np.float32)
+                dist_purple = np.sqrt(np.sum(diff**2, axis=2))
+                # 计算每个像素到舌头颜色的距离
+                diff_tongue = arr[:,:,:3].astype(np.float32) - np.array([tongue_r, tongue_g, tongue_b], dtype=np.float32)
+                dist_tongue = np.sqrt(np.sum(diff_tongue**2, axis=2))
+                # 紫色区域：距离小 且 不透明 且 不是舌头色
+                is_purple = (dist_purple < max_dist) & (arr[:,:,3] > 200)
+                is_tongue = dist_tongue < tongue_max_dist
+                mask = is_purple & (~is_tongue)
                 arr[mask] = bg_color
                 img = Image.fromarray(arr)
                 img.thumbnail((target_w, target_h), Image.LANCZOS)
