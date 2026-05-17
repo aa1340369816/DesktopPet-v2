@@ -1577,15 +1577,30 @@ class EventScheduler:
             return
         effects = choice["effects"]
         self._apply_effects(effects)
-        # 浮动效果数值
+        
+        # 浮动飘字（仍然保留，如果之前能工作就更好了）
         if self.float_callback:
             effect_list = self._format_effects(effects)
             if effect_list:
                 self.float_callback(effect_list)
-        # 结果文字显示在头顶（叙事窗口样式）
+        
+        # 核心：把结果文字和效果数值拼在一起，用头顶叙事窗口显示
         result_text = choice.get("result", "")
-        if result_text:
-            self.narrative_callback(result_text, event.get("name", ""))
+        # 将效果列表转成一行美观文字，例如「心情+4  金币+5  魅力+2」
+        effect_str = "  ".join(self._format_effects(effects))
+        
+        # 拼装最终显示文字
+        if result_text and effect_str:
+            display_text = f"{result_text}\n\n✨ {effect_str}"
+        elif result_text:
+            display_text = result_text
+        elif effect_str:
+            display_text = f"✨ {effect_str}"
+        else:
+            display_text = ""
+        
+        if display_text:
+            self.narrative_callback(display_text, event.get("name", ""))
     
     def _apply_effects(self, effects):
         """将效果字典应用到 PetState"""
