@@ -1,6 +1,7 @@
 import tkinter as tk
 import time
 
+
 class StatusWindow:
     def __init__(self, parent, pet_state):
         self.win = tk.Toplevel(parent)
