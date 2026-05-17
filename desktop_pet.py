@@ -5,6 +5,7 @@ import os
 import sys
 import time
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageTk, ImageDraw
 import pystray
 import ctypes
@@ -89,16 +90,22 @@ class DesktopPet:
             self.refresh_status
         )
 
-    # ---------- 后台缓存生成 ----------
     def _generate_caches_async(self):
         scales = [1.5, 2.0]
+        tasks = []
+        # 收集所有需要生成缓存的任务
         for scale in scales:
             if not self.cache_exists(scale, "greet"):
-                self.ensure_cache_for_scale(scale, "greet")
+                tasks.append((scale, "greet"))
             if not self.cache_exists(scale, "idle"):
-                self.ensure_cache_for_scale(scale, "idle")
+                tasks.append((scale, "idle"))
             if not self.cache_exists(scale, "store"):
-                self.ensure_cache_for_scale(scale, "store")
+                tasks.append((scale, "store"))
+        # 并行执行所有任务
+        if tasks:
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                for scale, name in tasks:
+                    executor.submit(self.ensure_cache_for_scale, scale, name)
 
     def _check_cache_thread(self):
         if self.cache_thread and self.cache_thread.is_alive():
