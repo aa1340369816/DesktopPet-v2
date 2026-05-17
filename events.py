@@ -1519,26 +1519,39 @@ class EventScheduler:
         self._save_cooldowns()
         
         if etype == "instant":
-            effects = event["effects"]
+            effects = event.get("effects", {})
             self._apply_effects(effects)
-            # 浮动文字
-            if self.float_callback:
-                effect_list = self._format_effects(effects)
-                if effect_list:
-                    self.float_callback(effect_list)
-            # toast 只显示文字描述
+            # 效果文字
+            effect_list = self._format_effects(effects)
+            effect_str = "  ".join(effect_list) if effect_list else ""
+            # 浮动飘字（保留）
+            if self.float_callback and effect_list:
+                self.float_callback(effect_list)
+            # toast 消息里加上效果
             toast_msg = event.get("toast", event["description"])
+            if effect_str:
+                toast_msg = toast_msg + "\n✨ " + effect_str
             self.toast(toast_msg, 4000)
         
         elif etype == "narrative":
-            if event["effects"]:
-                self._apply_effects(event["effects"])
-            self.narrative_callback(event["description"], event.get("name", ""))
+            effects = event.get("effects", {})
+            if effects:
+                self._apply_effects(effects)
+            effect_list = self._format_effects(effects)
+            effect_str = "  ".join(effect_list) if effect_list else ""
+            # 浮动飘字（保留）
+            if self.float_callback and effect_list:
+                self.float_callback(effect_list)
+            # 描述文字里加上效果
+            desc = event["description"]
+            if effect_str:
+                desc = desc + "\n\n✨ " + effect_str
+            self.narrative_callback(desc, event.get("name", ""))
         
         elif etype == "choice":
-            if self.current_choice_win and self.current_choice_win.win.winfo_exists():
+            # 选择类的效果在 _on_choice_made 中处理
+            if self.current_choice_win and self.current_choice_win.winfo_exists():
                 return
-            # 获取宠物窗口位置和尺寸
             pet_x = parent_window.winfo_rootx()
             pet_y = parent_window.winfo_rooty()
             pet_w = parent_window.winfo_width()
