@@ -63,13 +63,13 @@ class StatusPanelManager:
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        info_frame = tk.Frame(win, bg="#FFFFFF")
-        info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
-        lines = [
         import time as time_module
         now = time_module.localtime()
-        weekday_map = ["周一","周二","周三","周四","周五","周六","周日"]
+        weekday_map = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
         time_str = f"{now.tm_year}/{now.tm_mon:02d}/{now.tm_mday:02d} {weekday_map[now.tm_wday]} {now.tm_hour:02d}:{now.tm_min:02d}"
+
+        info_frame = tk.Frame(win, bg="#FFFFFF")
+        info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
         lines = [
             f"🕒 {time_str}",
             f"身份：{s.stage_name}  Lv.{s.level}   💰{s.gold}金币",
