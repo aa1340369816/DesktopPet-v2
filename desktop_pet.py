@@ -745,7 +745,8 @@ class DesktopPet:
         self.event_scheduler.set_action(f"训练-{type_}")
         self.performance_win = PerformanceWindow(self.pet_win, self.state, "train", type_,
                                                  callback=self.on_activity_end, pet_x=self.x, pet_y=self.y,
-                                                 pet_w=self.pet_w, pet_h=self.pet_h)
+                                                 pet_w=self.pet_w, pet_h=self.pet_h,
+                                                 visible=False)
 
     def start_schedule(self):
         ok, msg = self.state.do_schedule()
@@ -755,7 +756,8 @@ class DesktopPet:
         self.event_scheduler.set_action("接通告")
         self.performance_win = PerformanceWindow(self.pet_win, self.state, "schedule", "",
                                                  callback=self.on_activity_end, pet_x=self.x, pet_y=self.y,
-                                                 pet_w=self.pet_w, pet_h=self.pet_h)
+                                                 pet_w=self.pet_w, pet_h=self.pet_h,
+                                                 visible=False)
 
     def on_activity_end(self, msg=None):
         self.performance_win = None
@@ -917,126 +919,119 @@ class DesktopPet:
         self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
     def show_tray_status(self, *args):
-        """双击托盘图标时展示的状态面板（属性 + 活动进度）"""
+        """双击托盘图标时展示的状态面板（紧贴任务栏，无闪烁）"""
+        import ctypes as ct
+        from ctypes import wintypes
+
+        # 先获取任务栏位置
+        class APPBARDATA(ct.Structure):
+            _fields_ = [
+                ("cbSize", ct.c_uint),
+                ("hWnd", ct.c_void_p),
+                ("uCallbackMessage", ct.c_uint),
+                ("uEdge", ct.c_uint),
+                ("rc", wintypes.RECT),
+                ("lParam", ct.c_long),
+            ]
+        abd = APPBARDATA()
+        abd.cbSize = ct.sizeof(APPBARDATA)
+        ct.windll.shell32.SHAppBarMessage(4, ct.byref(abd))   # ABM_GETSTATE
+        ct.windll.shell32.SHAppBarMessage(5, ct.byref(abd))   # ABM_GETTASKBARPOS
+
+        taskbar_left = abd.rc.left
+        taskbar_top = abd.rc.top
+        taskbar_right = abd.rc.right
+        taskbar_bottom = abd.rc.bottom
+        taskbar_w = taskbar_right - taskbar_left
+        taskbar_h = taskbar_bottom - taskbar_top
+
+        screen_w = self.pet_win.winfo_screenwidth()
+        screen_h = self.pet_win.winfo_screenheight()
+
+        # 创建窗口，先隐藏
         win = tk.Toplevel(self.pet_win)
-        win.withdraw()                                    # 防止闪烁
+        win.withdraw()
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#FFFFFF")
         win.attributes("-alpha", 1.0)
 
-        w = 300
-        pad = 20
+        w = 280
+        pad = 16
         s = self.state
 
-        # ---- 标题 ----
-        title = tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
-                         fg="#000000", bg="#FFFFFF")
-        title.pack(pady=(pad, 0))
-
-        # 分隔线
+        # 标题
+        tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
+                 fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        # ---- 基础属性 ----
+        # 属性信息
         info_frame = tk.Frame(win, bg="#FFFFFF")
         info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
-
         lines = [
-            f"身份：{s.stage_name}  Lv.{s.level}",
-            f"💰{s.gold}金币   ❤️{s.health}/100",
-            f"🍖{int(s.satiety)}  😊{int(s.mood)}  ⚡{int(s.stamina)}  🧹{int(s.hygiene)}",
-            f"😫疲劳 {int(s.fatigue)}  {'🤒生病' if s.sick else '😄健康'}"
+            f"身份：{s.stage_name}  Lv.{s.level}   💰{s.gold}金币",
+            f"❤️健康 {s.health}/100  😫疲劳 {int(s.fatigue)}  {'🤒生病' if s.sick else '😄健康'}",
+            f"🍖{int(s.satiety)}  😊{int(s.mood)}  ⚡{int(s.stamina)}  🧹{int(s.hygiene)}"
         ]
         for line in lines:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
-        # ---- 当前活动进度 ----
+        # 当前活动进度
         activity_name = None
         progress_pct = 0
         progress_text = ""
 
         if self.current_activity and hasattr(self.current_activity, 'get_progress'):
-            activity_name = getattr(self.current_activity, 'title', '活动中')
+            # 读取活动的标题
+            activity_name = self.current_activity.title if hasattr(self.current_activity, 'title') else "活动中"
             progress_pct, progress_text = self.current_activity.get_progress()
         elif self.performance_win and hasattr(self.performance_win, 'get_progress'):
             activity_name = "训练/通告中"
             progress_pct, progress_text = self.performance_win.get_progress()
 
         if activity_name:
-            sep2 = tk.Frame(win, height=1, bg="#E5E5E5")
-            sep2.pack(fill="x", padx=pad, pady=(pad, 0))
-
+            tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(12, 0))
             tk.Label(win, text=f"当前：{activity_name}", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg="#FFFFFF").pack(pady=(12, 0))
-
-            # 极细进度条
-            bar_canvas = tk.Canvas(win, width=260, height=3, bg="#E5E5E5", highlightthickness=0)
-            bar_canvas.pack(pady=(8, 4), padx=pad)
-            bar_canvas.create_rectangle(0, 0, 260 * progress_pct / 100, 3, fill="#000000", outline="")
+            bar = tk.Canvas(win, width=240, height=3, bg="#E5E5E5", highlightthickness=0)
+            bar.pack(pady=(8, 4), padx=pad)
+            bar.create_rectangle(0, 0, 240 * progress_pct / 100, 3, fill="#000000", outline="")
             tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack()
         else:
             tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
 
-        # ---- 关闭按钮 ----
+        # 关闭按钮
         btn = tk.Button(win, text="关闭", font=("Segoe UI", 10),
                         fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                         bd=1, relief="solid", padx=12, pady=4,
                         command=win.destroy)
-        btn.pack(pady=(pad, pad))
+        btn.pack(pady=(12, pad))
 
-        # ---- 定位：紧贴任务栏 ----
+        # 计算高度并定位
         win.update_idletasks()
         h = win.winfo_reqheight()
+        if h < 180:
+            h = 180
 
-        # 获取任务栏位置
-        from ctypes import c_int, c_uint, c_long, c_void_p
-        import ctypes as ctypes_mod
-        import ctypes.wintypes
-
-        class APPBARDATA(ctypes_mod.Structure):
-            _fields_ = [
-                ("cbSize", c_uint),
-                ("hWnd", ctypes_mod.c_void_p),
-                ("uCallbackMessage", c_uint),
-                ("uEdge", c_uint),
-                ("rc", ctypes_mod.wintypes.RECT),
-                ("lParam", ctypes_mod.c_long),
-            ]
-        abd = APPBARDATA()
-        abd.cbSize = ctypes_mod.sizeof(APPBARDATA)
-        ctypes_mod.windll.shell32.SHAppBarMessage(4, ctypes_mod.byref(abd))  # ABM_GETSTATE
-        ctypes_mod.windll.shell32.SHAppBarMessage(5, ctypes_mod.byref(abd))  # ABM_GETTASKBARPOS
-
-        taskbar_left = abd.rc.left
-        taskbar_top = abd.rc.top
-        taskbar_right = abd.rc.right
-        taskbar_bottom = abd.rc.bottom
-
-        screen_w = self.pet_win.winfo_screenwidth()
-        screen_h = self.pet_win.winfo_screenheight()
-
-        if taskbar_top > screen_h // 2:
-            # 任务栏在底部
-            x = taskbar_right - w - 16
+        # 根据任务栏位置放在任务栏上方
+        if taskbar_bottom >= screen_h:      # 任务栏在底部
+            x = taskbar_right - w - 8
             y = taskbar_top - h - 8
-        elif taskbar_left > screen_w // 2:
-            # 任务栏在右侧
-            x = taskbar_left - w - 8
-            y = taskbar_bottom - h - 16
-        elif taskbar_bottom < screen_h // 2:
-            # 任务栏在顶部
-            x = taskbar_right - w - 16
+        elif taskbar_top <= 0:              # 任务栏在顶部
+            x = taskbar_right - w - 8
             y = taskbar_bottom + 8
-        else:
-            # 任务栏在左侧
+        elif taskbar_left <= 0:             # 任务栏在左侧
             x = taskbar_right + 8
-            y = taskbar_bottom - h - 16
+            y = taskbar_bottom - h - 8
+        else:                               # 任务栏在右侧
+            x = taskbar_left - w - 8
+            y = taskbar_bottom - h - 8
 
         win.geometry(f"{w}x{h}+{x}+{y}")
-        win.deiconify()   # 显示
+        win.deiconify()   # 配置完毕，显示窗口
     
     def toggle_focus(self):
         s = self.state
