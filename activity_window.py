@@ -61,3 +61,16 @@ class ActivityWindow:
         self.win.destroy()
         if self.on_finish:
             self.on_finish()
+
+    def get_progress(self):
+        """返回进度百分比 (0-100) 和剩余描述文本"""
+        if self.duration <= 0:
+            return 0, "即将完成"
+        pct = min(100, int(self.elapsed / self.duration * 100))
+        remaining = max(0, self.duration - self.elapsed)
+        rem_sec = int(remaining)
+        if rem_sec >= 60:
+            rem_text = f"{rem_sec // 60}分{rem_sec % 60}秒"
+        else:
+            rem_text = f"{rem_sec}秒"
+        return pct, rem_text
