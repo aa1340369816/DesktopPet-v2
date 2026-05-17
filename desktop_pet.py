@@ -74,6 +74,7 @@ class DesktopPet:
         self.current_activity = None
         self.toast_win = None
         self.status_win = None
+        self.tray_status_win = None
 
         self.tray = None
         self.create_tray()
@@ -320,7 +321,6 @@ class DesktopPet:
 
     # ==================== 极简 UI 方法 ====================
     def show_narrative_window(self, text, title=""):
-        """极简叙事窗口：缩小字体，加厚按钮"""
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
@@ -328,7 +328,6 @@ class DesktopPet:
         win.attributes("-alpha", 1.0)
 
         w = 340
-        # 临时标签测量高度（字体 10pt）
         temp_label = tk.Label(win, text=text, font=("Segoe UI", 10),
                               fg="#404040", bg="#FFFFFF", wraplength=300, justify="left")
         win.update_idletasks()
@@ -364,7 +363,7 @@ class DesktopPet:
         close_btn = tk.Button(win, text="我知道了", font=("Segoe UI", 10),
                               fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                               bd=1, relief="solid",
-                              padx=12, pady=6,           # 加厚按钮
+                              padx=12, pady=6,
                               command=win.destroy)
         close_btn.pack(pady=16)
 
@@ -382,7 +381,6 @@ class DesktopPet:
         follow()
 
     def show_toast(self, msg, duration=1500):
-        """极简 Toast：白底、黑字、细灰边框，跟随宠物移动"""
         if hasattr(self, 'toast_win') and self.toast_win and self.toast_win.winfo_exists():
             self.toast_win.destroy()
         self.pet_win.update_idletasks()
@@ -398,16 +396,14 @@ class DesktopPet:
         toast.geometry(f"+{pet_x + self.pet_w + 16}+{pet_y + 16}")
         self.active_notifications.append(toast)
 
-        # 跟随宠物移动
         def follow():
             if toast.winfo_exists():
                 nx = self.x + self.pet_w + 16
                 ny = self.y + 16
                 toast.geometry(f"+{nx}+{ny}")
-                toast.after(100, follow)   # 每 100ms 更新一次位置
+                toast.after(100, follow)
         follow()
 
-        # 定时销毁
         def destroy_toast():
             if toast in self.active_notifications:
                 self.active_notifications.remove(toast)
@@ -416,7 +412,6 @@ class DesktopPet:
         self.toast_win = toast
 
     def show_float_text(self, texts):
-        """极简浮动文字：蓝色点缀"""
         base_x = self.x + self.pet_w // 2
         base_y = self.y - 24
         for i, text in enumerate(texts):
@@ -447,7 +442,6 @@ class DesktopPet:
         self.root.after(50, lambda: self._animate_float(win, step + 1))
 
     def show_info(self, msg):
-        """极简消息弹窗（用于错误提示等）"""
         self.pet_win.update_idletasks()
         popup = tk.Toplevel(self.root)
         popup.overrideredirect(True)
@@ -767,7 +761,6 @@ class DesktopPet:
         self.refresh_status()
         self.event_scheduler.set_action(None)
 
-    # ==================== 状态面板刷新 ====================
     def refresh_status(self):
         if self.status_win and self.status_win.win.winfo_exists():
             self.status_win.refresh()
@@ -795,10 +788,10 @@ class DesktopPet:
         danmu.wm_attributes("-topmost", True)
         danmu.wm_attributes("-alpha", 0.8)
         danmu.configure(bg="black")
-        danmu.geometry(f"+{self.x}+{self.y}")  # 临时坐标，马上在 animate 中更新
+        danmu.geometry(f"+{self.x}+{self.y}")
         tk.Label(danmu, text=text, fg="white", bg="black", font=("微软雅黑", 9), padx=5, pady=2).pack()
         self.danmu_win = danmu
-        self.animate_danmu(0)   # 从步数 0 开始，不再传固定坐标
+        self.animate_danmu(0)
 
     def animate_danmu(self, step=0):
         if step > 40 or not self.danmu_win or not self.danmu_win.winfo_exists():
@@ -806,28 +799,18 @@ class DesktopPet:
                 self.danmu_win.destroy()
                 self.danmu_win = None
             return
-        
-        # 1. 获取宠物当前的头顶中央位置
         base_x = self.x + self.pet_w // 2
         base_y = self.y - 10
-        
-        # 2. 飘移偏移量（向左上角移动）
-        offset_x = step * 2      # 每步左移 2 像素
-        offset_y = step * 1      # 每步上移 1 像素
-        
-        # 3. 弹幕最终位置 = 基准位置 + 飘移
+        offset_x = step * 2
+        offset_y = step * 1
         x = base_x - offset_x
         y = base_y - offset_y
         self.danmu_win.geometry(f"+{x}+{y}")
-        
-        # 4. 透明度变化（后半段逐渐淡出）
         if step > 20:
             alpha = max(0.2, 0.8 - (step - 20) * 0.03)
         else:
             alpha = 0.8
         self.danmu_win.wm_attributes("-alpha", alpha)
-        
-        # 5. 下一帧
         self.root.after(100, lambda: self.animate_danmu(step + 1))
 
     # ==================== 陪伴循环 ====================
@@ -915,15 +898,16 @@ class DesktopPet:
         def on_close():
             self.status_win.win.destroy()
             self.status_win = None
-
         self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
     def show_tray_status(self, *args):
-        """双击托盘图标时展示的状态面板（紧贴任务栏，无闪烁）"""
+        if self.tray_status_win and self.tray_status_win.winfo_exists():
+            self.tray_status_win.lift()
+            return
+
         import ctypes as ct
         from ctypes import wintypes
 
-        # 先获取任务栏位置
         class APPBARDATA(ct.Structure):
             _fields_ = [
                 ("cbSize", ct.c_uint),
@@ -935,37 +919,31 @@ class DesktopPet:
             ]
         abd = APPBARDATA()
         abd.cbSize = ct.sizeof(APPBARDATA)
-        ct.windll.shell32.SHAppBarMessage(4, ct.byref(abd))   # ABM_GETSTATE
-        ct.windll.shell32.SHAppBarMessage(5, ct.byref(abd))   # ABM_GETTASKBARPOS
+        ct.windll.shell32.SHAppBarMessage(4, ct.byref(abd))
+        ct.windll.shell32.SHAppBarMessage(5, ct.byref(abd))
 
         taskbar_left = abd.rc.left
         taskbar_top = abd.rc.top
         taskbar_right = abd.rc.right
         taskbar_bottom = abd.rc.bottom
-        taskbar_w = taskbar_right - taskbar_left
-        taskbar_h = taskbar_bottom - taskbar_top
-
         screen_w = self.pet_win.winfo_screenwidth()
         screen_h = self.pet_win.winfo_screenheight()
 
-        # 创建窗口，先隐藏
         win = tk.Toplevel(self.pet_win)
-        win.withdraw()
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#FFFFFF")
-        win.attributes("-alpha", 1.0)
+        win.attributes("-alpha", 0)
+        win.withdraw()
 
         w = 280
         pad = 16
         s = self.state
 
-        # 标题
         tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        # 属性信息
         info_frame = tk.Frame(win, bg="#FFFFFF")
         info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
         lines = [
@@ -977,13 +955,11 @@ class DesktopPet:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
-        # 当前活动进度
         activity_name = None
         progress_pct = 0
         progress_text = ""
 
         if self.current_activity and hasattr(self.current_activity, 'get_progress'):
-            # 读取活动的标题
             activity_name = self.current_activity.title if hasattr(self.current_activity, 'title') else "活动中"
             progress_pct, progress_text = self.current_activity.get_progress()
         elif self.performance_win and hasattr(self.performance_win, 'get_progress'):
@@ -1003,36 +979,42 @@ class DesktopPet:
             tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
 
-        # 关闭按钮
+        def close():
+            if self.tray_status_win == win:
+                self.tray_status_win = None
+            win.destroy()
+
         btn = tk.Button(win, text="关闭", font=("Segoe UI", 10),
                         fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                         bd=1, relief="solid", padx=12, pady=4,
-                        command=win.destroy)
+                        command=close)
         btn.pack(pady=(12, pad))
 
-        # 计算高度并定位
         win.update_idletasks()
         h = win.winfo_reqheight()
         if h < 180:
             h = 180
 
-        # 根据任务栏位置放在任务栏上方
-        if taskbar_bottom >= screen_h:      # 任务栏在底部
+        if taskbar_bottom >= screen_h:
             x = taskbar_right - w - 8
             y = taskbar_top - h - 8
-        elif taskbar_top <= 0:              # 任务栏在顶部
+        elif taskbar_top <= 0:
             x = taskbar_right - w - 8
             y = taskbar_bottom + 8
-        elif taskbar_left <= 0:             # 任务栏在左侧
+        elif taskbar_left <= 0:
             x = taskbar_right + 8
             y = taskbar_bottom - h - 8
-        else:                               # 任务栏在右侧
+        else:
             x = taskbar_left - w - 8
             y = taskbar_bottom - h - 8
 
         win.geometry(f"{w}x{h}+{x}+{y}")
-        win.deiconify()   # 配置完毕，显示窗口
-    
+        win.attributes("-alpha", 1)
+        win.deiconify()
+
+        win.protocol("WM_DELETE_WINDOW", close)
+        self.tray_status_win = win
+
     def toggle_focus(self):
         s = self.state
         if not s.focus_mode:
@@ -1067,7 +1049,7 @@ class DesktopPet:
         draw.ellipse((34, 22, 42, 30), fill="white")
         draw.arc((22, 34, 42, 44), start=0, end=180, fill="white", width=2)
         menu = pystray.Menu(
-            pystray.MenuItem("状态面板", self.show_tray_status, default=True),  # 双击触发
+            pystray.MenuItem("状态面板", self.show_tray_status, default=True),
             pystray.MenuItem("显示宠物", self.show_pet),
             pystray.MenuItem("专注模式", self.toggle_focus),
             pystray.MenuItem("开机自启", self.toggle_startup, checked=lambda item: get_startup_status()),
