@@ -185,8 +185,8 @@ class DesktopPet:
             ref_r, ref_g, ref_b = 149, 93, 190
             max_dist = 80
             bg_color = (240, 240, 240, 255)
-            outline_color = (255, 255, 255, 255)   # 描边颜色：白色
-            outline_width = 2                       # 描边粗细（像素）
+            outline_color = (255, 255, 255, 180)   # 原来是 255，现在带一点透明
+            outline_width = 1                       # 从 2 改为 1
             for i, frame in enumerate(reader):
                 img = Image.fromarray(frame).convert("RGBA")
                 arr = np.array(img)
