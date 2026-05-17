@@ -3,3 +3,4 @@ pyinstaller
 pystray
 imageio
 imageio-ffmpeg
+scipy
