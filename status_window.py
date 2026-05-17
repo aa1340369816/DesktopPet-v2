@@ -36,3 +36,8 @@ class StatusWindow:
         ]
         for attr in attrs:
             tk.Label(self.win, text=attr, font=("微软雅黑", 10)).pack(anchor="w", padx=10)
+
+    def refresh(self):
+        """重新绘制面板内容，保留窗口位置"""
+        if self.win.winfo_exists():
+            self.build()
