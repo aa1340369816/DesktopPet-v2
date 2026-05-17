@@ -65,10 +65,24 @@ class DesktopPet:
         else:
             self.base_dir = os.path.dirname(os.path.abspath(__file__))
 
-        self.show_progress_bar("正在准备动画缓存，请稍候...")
-        self.cache_thread = threading.Thread(target=self._generate_caches_async, daemon=True)
-        self.cache_thread.start()
-        self.root.after(100, self._check_cache_thread)
+        # 检查缓存是否都已存在
+        all_cached = True
+        scales = [1.5, 2.0]
+        for scale in scales:
+            if not self.cache_exists(scale, "greet") or \
+               not self.cache_exists(scale, "idle") or \
+               not self.cache_exists(scale, "store"):
+                all_cached = False
+                break
+
+        if all_cached:
+            # 缓存齐全，跳过进度条，直接初始化
+            self._on_cache_ready()
+        else:
+            self.show_progress_bar("正在准备动画缓存，请稍候...")
+            self.cache_thread = threading.Thread(target=self._generate_caches_async, daemon=True)
+            self.cache_thread.start()
+            self.root.after(100, self._check_cache_thread)
 
         self.performance_win = None
         self.shop_win = None
