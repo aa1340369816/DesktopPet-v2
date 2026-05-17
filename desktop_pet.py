@@ -75,6 +75,7 @@ class DesktopPet:
         self.toast_win = None
         self.status_win = None
         self.tray_status_win = None
+        self._create_tray_status_win()   # 预创建隐藏状态窗口
 
         self.tray = None
         self.create_tray()
@@ -900,9 +901,27 @@ class DesktopPet:
             self.status_win = None
         self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
+    def _create_tray_status_win(self):
+        """预创建一个隐藏的状态窗口，避免双击时闪烁"""
+        win = tk.Toplevel(self.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.configure(bg="#FFFFFF")
+        win.attributes("-alpha", 0.0)
+        win.geometry("1x1+-200+-200")
+        win.withdraw()
+        self.tray_status_win = win
+
     def show_tray_status(self, *args):
-        if self.tray_status_win and self.tray_status_win.winfo_exists():
-            self.tray_status_win.lift()
+        # 确保窗口存在（若被意外销毁则重建）
+        if not self.tray_status_win or not self.tray_status_win.winfo_exists():
+            self._create_tray_status_win()
+
+        win = self.tray_status_win
+
+        # 如果窗口已显示，只提到最前
+        if win.winfo_ismapped():
+            win.lift()
             return
 
         import ctypes as ct
@@ -930,24 +949,20 @@ class DesktopPet:
         screen_w = self.pet_win.winfo_screenwidth()
         screen_h = self.pet_win.winfo_screenheight()
 
-        # 创建一个完全隐藏的窗口（放到屏幕外 + 透明 + 极小）
-        win = tk.Toplevel(self.pet_win)
-        win.overrideredirect(True)
-        win.wm_attributes("-topmost", True)
-        win.configure(bg="#FFFFFF")
-        win.attributes("-alpha", 0.0)          # 完全透明
-        win.geometry("1x1+-200+-200")          # 扔到屏幕外
-        win.withdraw()                         # 彻底隐藏
+        # 清空窗口原有内容
+        for widget in win.winfo_children():
+            widget.destroy()
 
         w = 280
         pad = 16
         s = self.state
 
-        # 开始构建内容
+        # 标题
         tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
+        # 属性
         info_frame = tk.Frame(win, bg="#FFFFFF")
         info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
         lines = [
@@ -959,6 +974,7 @@ class DesktopPet:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
+        # 当前活动进度
         activity_name = None
         progress_pct = 0
         progress_text = ""
@@ -983,15 +999,14 @@ class DesktopPet:
             tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
 
-        def close():
-            if self.tray_status_win == win:
-                self.tray_status_win = None
-            win.destroy()
+        # 关闭按钮（隐藏窗口而非销毁）
+        def hide():
+            win.withdraw()
 
         btn = tk.Button(win, text="关闭", font=("Segoe UI", 10),
                         fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                         bd=1, relief="solid", padx=12, pady=4,
-                        command=close)
+                        command=hide)
         btn.pack(pady=(12, pad))
 
         # 计算高度
@@ -1000,7 +1015,7 @@ class DesktopPet:
         if h < 180:
             h = 180
 
-        # 根据任务栏位置定位
+        # 定位（紧贴任务栏）
         if taskbar_bottom >= screen_h:      # 底部任务栏
             x = taskbar_right - w - 8
             y = taskbar_top - h - 8
@@ -1014,13 +1029,13 @@ class DesktopPet:
             x = taskbar_left - w - 8
             y = taskbar_bottom - h - 8
 
-        # 最后：移到正确位置，恢复不透明，显示
+        # 移动并显示
         win.geometry(f"{w}x{h}+{x}+{y}")
         win.attributes("-alpha", 1.0)
         win.deiconify()
 
-        win.protocol("WM_DELETE_WINDOW", close)
-        self.tray_status_win = win
+        # 绑定窗口关闭事件（点×隐藏）
+        win.protocol("WM_DELETE_WINDOW", hide)
 
     def toggle_focus(self):
         s = self.state
