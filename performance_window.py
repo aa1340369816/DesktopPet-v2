@@ -90,3 +90,17 @@ class PerformanceWindow:
         self.pos_x = x + (self.pet_w-300)//2
         self.pos_y = y + self.pet_h + 16
         self.win.geometry(f"+{self.pos_x}+{self.pos_y}")
+
+    def get_progress(self):
+        """返回进度百分比 (0-100) 和剩余描述文本"""
+        total = self.duration + self.extra_dur
+        if total <= 0:
+            return 0, "即将完成"
+        pct = min(100, int(self.elapsed / total * 100))
+        remaining = max(0, total - self.elapsed)
+        rem_sec = int(remaining)
+        if rem_sec >= 60:
+            rem_text = f"{rem_sec // 60}分{rem_sec % 60}秒"
+        else:
+            rem_text = f"{rem_sec}秒"
+        return pct, rem_text
