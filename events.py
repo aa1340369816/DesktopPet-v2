@@ -1,7 +1,10 @@
 import random
 import time
 import tkinter as tk
+
+# 事件数据从独立文件导入
 from event_pool import EVENT_POOL
+
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
@@ -41,16 +44,16 @@ class ChoiceWindow:
             on_choose(event["choices"][choice_idx])
 
         for i, choice in enumerate(event["choices"]):
-            btn = tk.Button(btn_frame, text=choice["text"],    # 不再截断
+            btn = tk.Button(btn_frame, text=choice["text"],
                             font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF",
                             activebackground="#F5F5F5",
                             bd=1, relief="solid",
-                            justify="left",              # 文字左对齐
-                            wraplength=280,              # 按钮内换行宽度与窗口匹配
-                            padx=12, pady=8,             # 内边距让按钮更厚
-                            anchor="w",                  # 内容靠左
+                            justify="left",
+                            wraplength=280,
+                            padx=12, pady=8,
+                            anchor="w",
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(fill="x", pady=4)                   # 按钮填满宽度，垂直间隔
+            btn.pack(fill="x", pady=4)
 
         # 底部提示
         tip_label = tk.Label(self.win, text="请选择一个选项",
@@ -88,6 +91,7 @@ class ChoiceWindow:
         self.win.geometry(f"+{self.x}+{self.y}")
         self.win.after(200, self._follow)
 
+
 # ==================== 事件调度器 ====================
 class EventScheduler:
     def __init__(self, pet_state, toast_callback, info_callback,
@@ -104,7 +108,7 @@ class EventScheduler:
         if hasattr(pet_state, 'event_cooldowns'):
             self.cooldowns = pet_state.event_cooldowns
 
-        # 下次检查时间（默认5分钟后）
+        # 下次检查时间（启动后5分钟开始检查）
         self.next_check_time = time.time() + 300
 
         # 当前打开的选择窗口
@@ -114,8 +118,9 @@ class EventScheduler:
         self.current_action = None
 
     def set_action(self, action_name):
+        """设置当前活动，如 '便利店兼职'、'训练-voice'、None 表示空闲"""
         self.current_action = action_name
-        # 如果设置了具体活动，立即允许一次事件检查（不等倒计时）
+        # 开始活动时立即允许一次事件检查
         if action_name is not None:
             self.next_check_time = time.time()
 
@@ -129,12 +134,12 @@ class EventScheduler:
         if now < self.next_check_time:
             return
 
-        # 重置下次检查时间
-        self.next_check_time = now + 20  # 30秒一次
+        # 重置下次检查时间（5~30分钟随机间隔）
+        self.next_check_time = now + random.randint(300, 1800)
 
         # 概率过滤（50%）
-        # if random.random() > 0.5:
-        #     return
+        if random.random() > 0.5:
+            return
 
         # 筛选可用事件
         available = []
@@ -229,16 +234,15 @@ class EventScheduler:
             self._apply_effects(effects)
             # 浮动飘字
             effect_list = self._format_effects(effects)
+            effect_str = "  ".join(effect_list) if effect_list else ""
             if self.float_callback and effect_list:
                 self.float_callback(effect_list)
-            # 头顶弹窗：显示 name + description + 效果
-            effect_str = "  ".join(effect_list) if effect_list else ""
+            # 头顶弹窗
             display_text = event.get("description", "")
             if effect_str:
                 display_text += "\n\n✨ " + effect_str
-            # 弹出较短的自动消失窗口（保留 toast 作为快速提示）
             self.narrative_callback(display_text, event.get("name", ""))
-            # 同时保留底部 toast（可去掉如果你觉得多余）
+            # toast 简短提示（如果有）
             toast_msg = event.get("toast", "")
             if toast_msg:
                 self.toast(toast_msg, 3000)
@@ -257,7 +261,7 @@ class EventScheduler:
             self.narrative_callback(desc, event.get("name", ""))
 
         elif etype == "choice":
-            if self.current_choice_win and self.current_choice_win.win.winfo_exists():
+            if self.current_choice_win and self.current_choice_win.winfo_exists():
                 return
             pet_x = parent_window.winfo_rootx()
             pet_y = parent_window.winfo_rooty()
@@ -343,6 +347,4 @@ class EventScheduler:
 
     def _save_cooldowns(self):
         """将冷却记录写入 pet_state 以便存档"""
-        self.state.event_cooldowns = self.cooldowns
-        """将冷却记录写回 pet_state，以便存档"""
         self.state.event_cooldowns = self.cooldowns
