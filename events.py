@@ -1450,6 +1450,12 @@ class EventScheduler:
         
         # 用于存储当前打开的选择窗口，避免同时打开多个
         self.current_choice_win = None
+
+        # 在 __init__ 中已有的 self.current_choice_win = None 下方添加：
+        self.current_action = None   # 记录当前正在做的活动名称
+
+    def set_action(self, action_name):
+        self.current_action = action_name
     
     def update(self, parent_window):
         """在 companion_loop 中每秒调用一次"""
@@ -1507,7 +1513,57 @@ class EventScheduler:
         return True
     
     def _check_conditions(self, conditions):
-        """预留：检查复杂的触发条件"""
+        """检查事件是否满足触发条件"""
+        if conditions is None:
+            return True
+
+        s = self.state
+
+        # 检查阶段限制
+        if "stage" in conditions:
+            allowed_stages = conditions["stage"]
+            if s.stage not in allowed_stages:
+                return False
+
+        # 检查当前活动限制
+        if "action" in conditions:
+            required_action = conditions["action"]
+            if self.current_action != required_action:
+                return False
+
+        # 检查属性状态条件
+        if "state" in conditions:
+            for attr, rule in conditions["state"].items():
+                current_val = getattr(s, attr, 0)
+                # 规则格式：">50" 或 "<30" 或 ">=80" 等
+                if rule.startswith(">"):
+                    threshold = float(rule[1:])
+                    if not (current_val > threshold):
+                        return False
+                elif rule.startswith("<"):
+                    threshold = float(rule[1:])
+                    if not (current_val < threshold):
+                        return False
+                elif rule.startswith(">="):
+                    threshold = float(rule[2:])
+                    if not (current_val >= threshold):
+                        return False
+                elif rule.startswith("<="):
+                    threshold = float(rule[2:])
+                    if not (current_val <= threshold):
+                        return False
+                # 可以扩展
+
+        # 检查游戏内小时范围
+        if "hour_range" in conditions:
+            low, high = conditions["hour_range"]
+            if not (low <= s.game_time.hour < high):
+                return False
+
+        # 检查是否空闲
+        if conditions.get("not_busy") and s.busy:
+            return False
+
         return True
     
     def trigger_event(self, event, parent_window):
