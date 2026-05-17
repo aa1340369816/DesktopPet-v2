@@ -1364,8 +1364,14 @@ EVENT_POOL = [
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
-    """用于显示二选一事件的小窗口"""
+    """用于显示二选一事件的小窗口，会跟随宠物移动"""
     def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
+        self.parent = parent
+        self.pet_x = pet_x
+        self.pet_y = pet_y
+        self.pet_w = pet_w
+        self.pet_h = pet_h
+        
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
@@ -1373,22 +1379,19 @@ class ChoiceWindow:
         self.win.attributes("-alpha", 0.95)
         
         # 窗口尺寸
-        w, h = 360, 220
+        self.w = 360
+        self.h = 220
         
-        # 固定在宠物头顶正上方
-        x = pet_x + (pet_w - w) // 2
-        y = pet_y - h - 10
-        # 防止超出屏幕上边界
-        if y < 0:
-            y = pet_y + pet_h + 10
-        self.win.geometry(f"{w}x{h}+{x}+{y}")
+        # 计算初始位置
+        self._reposition()
+        self.win.geometry(f"{self.w}x{self.h}+{x}+{y}")
         
         # 事件标题
         name_label = tk.Label(self.win, text=event.get("name", ""),
                               font=("微软雅黑", 11, "bold"), fg="#FFD700", bg="#2E2E2E")
         name_label.pack(pady=(15, 5))
         
-        # 事件描述（自动换行）
+        # 事件描述
         desc_label = tk.Label(self.win, text=event["description"],
                               font=("微软雅黑", 10), fg="white", bg="#2E2E2E",
                               wraplength=320, justify="left")
@@ -1405,7 +1408,6 @@ class ChoiceWindow:
         
         for i, choice in enumerate(event["choices"]):
             btn_text = choice["text"]
-            # 按钮文字过长则截断
             if len(btn_text) > 18:
                 btn_text = btn_text[:17] + "…"
             
@@ -1422,6 +1424,33 @@ class ChoiceWindow:
         tip_label = tk.Label(self.win, text="请选择一个选项",
                              font=("微软雅黑", 8), fg="#999999", bg="#2E2E2E")
         tip_label.pack(pady=(10, 5))
+        
+        # 开始跟随宠物移动
+        self._follow()
+    
+    def _reposition(self):
+        """根据当前宠物位置计算窗口坐标"""
+        self.x = self.pet_x + (self.pet_w - self.w) // 2
+        self.y = self.pet_y - self.h - 10
+        if self.y < 0:
+            self.y = self.pet_y + self.pet_h + 10
+    
+    def _follow(self):
+        """循环检查宠物位置并移动窗口"""
+        if not self.win.winfo_exists():
+            return
+        
+        # 获取宠物当前屏幕坐标（通过父窗口获取）
+        self.pet_x = self.parent.winfo_rootx()
+        self.pet_y = self.parent.winfo_rooty()
+        self.pet_w = self.parent.winfo_width()
+        self.pet_h = self.parent.winfo_height()
+        
+        self._reposition()
+        self.win.geometry(f"+{self.x}+{self.y}")
+        
+        # 每 200 毫秒更新一次位置
+        self.win.after(200, self._follow)
 
 
 # ==================== 事件调度器 ====================
