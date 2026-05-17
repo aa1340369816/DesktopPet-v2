@@ -91,7 +91,7 @@ class DesktopPet:
 
     # ---------- 后台缓存生成 ----------
     def _generate_caches_async(self):
-        scales = [1.5, 2.0, 2.5]
+        scales = [1.5, 2.0]
         for scale in scales:
             if not self.cache_exists(scale, "greet"):
                 self.ensure_cache_for_scale(scale, "greet")
