@@ -908,6 +908,7 @@ class DesktopPet:
         import ctypes as ct
         from ctypes import wintypes
 
+        # 获取任务栏位置
         class APPBARDATA(ct.Structure):
             _fields_ = [
                 ("cbSize", ct.c_uint),
@@ -929,17 +930,20 @@ class DesktopPet:
         screen_w = self.pet_win.winfo_screenwidth()
         screen_h = self.pet_win.winfo_screenheight()
 
+        # 创建一个完全隐藏的窗口（放到屏幕外 + 透明 + 极小）
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#FFFFFF")
-        win.attributes("-alpha", 0)
-        win.withdraw()
+        win.attributes("-alpha", 0.0)          # 完全透明
+        win.geometry("1x1+-200+-200")          # 扔到屏幕外
+        win.withdraw()                         # 彻底隐藏
 
         w = 280
         pad = 16
         s = self.state
 
+        # 开始构建内容
         tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
@@ -990,26 +994,29 @@ class DesktopPet:
                         command=close)
         btn.pack(pady=(12, pad))
 
+        # 计算高度
         win.update_idletasks()
         h = win.winfo_reqheight()
         if h < 180:
             h = 180
 
-        if taskbar_bottom >= screen_h:
+        # 根据任务栏位置定位
+        if taskbar_bottom >= screen_h:      # 底部任务栏
             x = taskbar_right - w - 8
             y = taskbar_top - h - 8
-        elif taskbar_top <= 0:
+        elif taskbar_top <= 0:              # 顶部任务栏
             x = taskbar_right - w - 8
             y = taskbar_bottom + 8
-        elif taskbar_left <= 0:
+        elif taskbar_left <= 0:             # 左侧任务栏
             x = taskbar_right + 8
             y = taskbar_bottom - h - 8
-        else:
+        else:                               # 右侧任务栏
             x = taskbar_left - w - 8
             y = taskbar_bottom - h - 8
 
+        # 最后：移到正确位置，恢复不透明，显示
         win.geometry(f"{w}x{h}+{x}+{y}")
-        win.attributes("-alpha", 1)
+        win.attributes("-alpha", 1.0)
         win.deiconify()
 
         win.protocol("WM_DELETE_WINDOW", close)
