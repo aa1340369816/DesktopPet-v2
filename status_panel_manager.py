@@ -147,6 +147,17 @@ class StatusPanelManager:
         win_w = win.winfo_reqwidth()
         win_h = win.winfo_reqheight()
 
+    def show_status(self):
+        if self.pet.status_win and self.pet.status_win.win.winfo_exists():
+            self.pet.status_win.win.lift()
+            return
+
+        self.pet.status_win = StatusWindow(self.pet.pet_win, self.pet.state)
+        win = self.pet.status_win.win
+        win.update_idletasks()
+        win_w = win.winfo_reqwidth()
+        win_h = win.winfo_reqheight()
+
         def update_position():
             if not win.winfo_exists():
                 return
