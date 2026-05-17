@@ -66,6 +66,12 @@ class StatusPanelManager:
         info_frame = tk.Frame(win, bg="#FFFFFF")
         info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
         lines = [
+        import time as time_module
+        now = time_module.localtime()
+        weekday_map = ["周一","周二","周三","周四","周五","周六","周日"]
+        time_str = f"{now.tm_year}/{now.tm_mon:02d}/{now.tm_mday:02d} {weekday_map[now.tm_wday]} {now.tm_hour:02d}:{now.tm_min:02d}"
+        lines = [
+            f"🕒 {time_str}",
             f"身份：{s.stage_name}  Lv.{s.level}   💰{s.gold}金币",
             f"❤️健康 {s.health}/100  😫疲劳 {int(s.fatigue)}  {'🤒生病' if s.sick else '😄健康'}",
             f"🍖{int(s.satiety)}  😊{int(s.mood)}  ⚡{int(s.stamina)}  🧹{int(s.hygiene)}"
