@@ -1,62 +1,76 @@
 import tkinter as tk
-import time
+import ctypes as ct
+from ctypes import wintypes
+from status_window import StatusWindow
+from shop_window import ShopWindow
 
-class StatusWindow:
-    def __init__(self, parent, pet_state):
-        self.win = tk.Toplevel(parent)
-        self.win.title("练习生状态")
-        self.win.geometry("320x560")
-        self.win.configure(bg="#FFFFFF")
-        self.pet_state = pet_state
-        self.build()
 
-    def build(self):
-        for w in self.win.winfo_children():
-            w.destroy()
-        s = self.pet_state
-        now = time.localtime()
-        weekday_map = ["周一","周二","周三","周四","周五","周六","周日"]
-        real_time_str = f"{now.tm_year}-{now.tm_mon:02d}-{now.tm_mday:02d} {weekday_map[now.tm_wday]} {now.tm_hour:02d}:{now.tm_min:02d}:{now.tm_sec:02d}"
+class StatusPanelManager:
+    def __init__(self, pet):
+        self.pet = pet
+        self.tray_status_win = None
+        self._create_tray_status_win()
 
-        # 标题
-        tk.Label(self.win, text="练习生状态", font=("Segoe UI", 14, "bold"),
-                 fg="#000000", bg="#FFFFFF").pack(pady=(24,0))
-        # 分隔线
-        tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=24, pady=(16,0))
+    def _create_tray_status_win(self):
+        win = tk.Toplevel(self.pet.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.configure(bg="#FFFFFF")
+        win.attributes("-alpha", 0.0)
+        win.geometry("1x1+-200+-200")
+        win.withdraw()
+        self.tray_status_win = win
 
-        # 信息区
-        info_frame = tk.Frame(self.win, bg="#FFFFFF")
-        info_frame.pack(pady=16, padx=24, fill="x")
+    # ... 其他方法保持不变 ...
 
-        # 现实时间
-        tk.Label(info_frame, text=f"🕒 {real_time_str}", font=("Segoe UI", 10),
-                 fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=2)
+    def show_status(self):
+        """打开状态窗口（智能定位 + 跟随移动）"""
+        if self.pet.status_win and self.pet.status_win.win.winfo_exists():
+            self.pet.status_win.win.lift()
+            return
 
-        # 身份 / 等级 / 金币
-        tk.Label(info_frame, text=f"身份：{s.stage_name} (路线{'公开' if s.route==1 else '未公开' if s.route==2 else '未定'})",
-                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
-        tk.Label(info_frame, text=f"⭐等级 {s.level}   💰金币 {s.gold}",
-                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
+        self.pet.status_win = StatusWindow(self.pet.pet_win, self.pet.state)
+        win = self.pet.status_win.win
+        win.update_idletasks()
+        win_w = win.winfo_reqwidth()
+        win_h = win.winfo_reqheight()
 
-        # 健康
-        tk.Label(info_frame, text=f"❤️ 健康度：{s.health}/100",
-                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
+        # 跟随移动 + 智能定位的函数
+        def update_position():
+            if not win.winfo_exists():
+                return
+            pet_x = self.pet.x
+            pet_y = self.pet.y
+            pet_w = self.pet.pet_w
+            pet_h = self.pet.pet_h
+            screen_w = self.pet.pet_win.winfo_screenwidth()
+            screen_h = self.pet.pet_win.winfo_screenheight()
 
-        # 其他属性
-        attrs = [
-            f"🍖饱食 {int(s.satiety)}/100     😊心情 {int(s.mood)}/100",
-            f"⚡体力 {int(s.stamina)}/100     🧹清洁 {int(s.hygiene)}/100",
-            f"😫疲劳 {int(s.fatigue)}     🏥 {'🤒生病' if s.sick else '😄健康'}",
-            f"🎤唱功 {int(s.vocal)}     💃舞蹈 {int(s.dance)}",
-            f"🎭演技 {int(s.acting)}     🎪综艺 {int(s.variety)}",
-            f"✨魅力 {int(s.charm)}     📈人气 {int(s.popularity)}",
-            f"👥粉丝 {int(s.fans)}"
-        ]
-        for attr in attrs:
-            tk.Label(info_frame, text=attr, font=("Segoe UI", 12),
-                     fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=4)
+            # 水平方向：默认在宠物右侧，空间不够则放左侧
+            if pet_x + pet_w + win_w + 10 <= screen_w:
+                x = pet_x + pet_w + 10
+            else:
+                x = pet_x - win_w - 10
 
-    def refresh(self):
-        if self.win.winfo_exists():
-            self.build()
-            self.win.update_idletasks()
+            # 垂直方向：居中于宠物，但不超出屏幕
+            y = pet_y + (pet_h - win_h) // 2
+            if y < 0:
+                y = 0
+            elif y + win_h > screen_h:
+                y = screen_h - win_h
+
+            win.geometry(f"+{x}+{y}")
+            # 持续跟随
+            win.after(200, update_position)
+
+        update_position()
+
+        # 关闭时清理引用
+        def on_close():
+            self.pet.status_win.win.destroy()
+            self.pet.status_win = None
+
+        win.protocol("WM_DELETE_WINDOW", on_close)
+
+    # 以下方法保持不变（show_inventory, open_shop, refresh_status 等）
+    # ... 保持原样即可 ...
