@@ -13,13 +13,6 @@ class CompanionManager:
         idle = ActivityMonitor.get_idle_seconds()
         s.idle_time = idle
         s.total_playtime += 1
-        gt = s.game_time
-        if gt.week > s.last_milestone_week:
-            s.last_milestone_week = gt.week
-            self.pet.ui_manager.show_toast(f"🎉 第{gt.week}周纪念！一起加油哦！", 3000)
-        if gt.day > s.last_milestone_day and gt.day % 100 == 0:
-            s.last_milestone_day = gt.day
-            self.pet.ui_manager.show_toast(f"🎈 一起走过{gt.day}天！", 3000)
         if s.focus_mode and now > s.focus_end_time:
             s.focus_mode = False
             self.pet.ui_manager.show_toast("🍅 专注时间结束！", 3000)
