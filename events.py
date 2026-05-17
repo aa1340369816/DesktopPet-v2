@@ -1577,12 +1577,12 @@ class EventScheduler:
             return
         effects = choice["effects"]
         self._apply_effects(effects)
-        # 浮动效果数值（像弹幕飘过）
+        # 浮动效果数值
         if self.float_callback:
             effect_list = self._format_effects(effects)
             if effect_list:
                 self.float_callback(effect_list)
-        # 结果文字显示在宠物头顶（复用叙事窗口样式）
+        # 结果文字显示在头顶（叙事窗口样式）
         result_text = choice.get("result", "")
         if result_text:
             self.narrative_callback(result_text, event.get("name", ""))
