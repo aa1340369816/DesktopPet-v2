@@ -18,7 +18,7 @@ from shop_window import ShopWindow
 from status_window import StatusWindow
 from performance_window import PerformanceWindow
 from activity_monitor import ActivityMonitor
-from events import EventScheduler, EVENT_POOL
+from events import EventScheduler
 
 class DesktopPet:
     def __init__(self, image_folder="pet_frames"):
@@ -86,7 +86,7 @@ class DesktopPet:
             self.show_info,
             self.show_float_text,
             self.show_narrative_window,
-            self.refresh_status          # 新增
+            self.refresh_status
         )
 
     # ---------- 后台缓存生成 ----------
@@ -97,6 +97,8 @@ class DesktopPet:
                 self.ensure_cache_for_scale(scale, "greet")
             if not self.cache_exists(scale, "idle"):
                 self.ensure_cache_for_scale(scale, "idle")
+            if not self.cache_exists(scale, "store"):
+                self.ensure_cache_for_scale(scale, "store")
 
     def _check_cache_thread(self):
         if self.cache_thread and self.cache_thread.is_alive():
@@ -292,6 +294,15 @@ class DesktopPet:
             if self.static_img:
                 self.anim_label.configure(image=self.static_img)
 
+    # ---------- 便利店打工动画 ----------
+    def play_store_animation(self):
+        """播放便利店打工动画（循环），直到被停止"""
+        self.ensure_cache_for_scale(self.state.scale, "store")
+        cache_dir = os.path.join(self.base_dir, f"store_{self.state.scale}x_frames")
+        frames = self.load_png_frames(cache_dir)
+        if frames:
+            self.play_animation(frames, loop=True)
+
     def bind_events(self):
         self.anim_label.bind("<Button-1>", self.start_drag)
         self.anim_label.bind("<B1-Motion>", self.on_drag)
@@ -436,11 +447,13 @@ class DesktopPet:
     def do_part_time_job(self, job):
         s = self.state
         if job == "便利店兼职":
-            duration = 3600          # 1小时
+            self.play_store_animation()          # 开始打工动画
+            duration = 3600
             game_hours = 1
             def effect(state):
                 state.gold += 20
                 state.gain_exp(5)
+                self.switch_to_idle()            # 打工结束切回待机
         elif job == "咖啡店打工":
             duration = 3600
             game_hours = 1
@@ -449,7 +462,7 @@ class DesktopPet:
                 state.charm += 3
                 state.gain_exp(5)
         elif job == "快递分拣":
-            duration = 5400          # 1.5小时
+            duration = 5400
             game_hours = 1.5
             def effect(state):
                 state.gold += 30
@@ -464,12 +477,12 @@ class DesktopPet:
         if "进阶" in course:
             cost = 60
             gain = 15
-            duration = 5400      # 1.5小时
+            duration = 5400
             game_hours = 1.5
         else:
             cost = 30
             gain = 8
-            duration = 3600      # 1小时
+            duration = 3600
             game_hours = 1
         if "声乐" in course:
             attr = "vocal"
@@ -495,10 +508,8 @@ class DesktopPet:
         def effect(state):
             if is_vocal:
                 state.vocal += gain
-                msg = f"街头表演结束，唱功+{gain}"
             else:
                 state.dance += gain
-                msg = f"街头表演结束，舞蹈+{gain}"
             state.charm += 5
             state.gain_exp(5)
 
@@ -544,7 +555,6 @@ class DesktopPet:
         if price > 0:
             s.gold -= price
 
-        # 通知调度器当前活动
         self.event_scheduler.set_action(name)
 
         def on_finish():
@@ -554,14 +564,14 @@ class DesktopPet:
             self.show_toast(f"✅ {name}完成")
             s.save()
             self.refresh_status()
-            self.event_scheduler.set_action(None)   # 活动结束，清除
+            self.event_scheduler.set_action(None)
 
         def on_cancel():
             if price > 0:
                 s.gold += price
             self.show_toast(f"❌ {name}已取消")
             s.save()
-            self.event_scheduler.set_action(None)   # 取消也清除
+            self.event_scheduler.set_action(None)
 
         self.current_activity = ActivityWindow(self.pet_win, f"{name}中...", duration, on_finish, on_cancel,
                                                pet_x=self.x, pet_y=self.y, pet_w=self.pet_w, pet_h=self.pet_h)
@@ -646,70 +656,54 @@ class DesktopPet:
                     self.active_notifications.remove(popup)
 
     def show_narrative_window(self, text, title=""):
-        """在宠物头顶显示叙事事件窗口，自动消失，可手动关闭，跟随宠物"""
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#2E2E2E")
         win.attributes("-alpha", 0.92)
         
-        # 窗口宽度固定
         w = 340
         
-        # 先创建标题和正文，但不 pack，先计算高度
-        # 临时 Label 用于测量所需高度
         temp_label = tk.Label(win, text=text, font=("微软雅黑", 10),
                               fg="white", bg="#2E2E2E",
                               wraplength=300, justify="left")
-        # 计算文本所需高度（多行）
-        # 更新一下让 tkinter 计算尺寸
         win.update_idletasks()
-        # 获取所需高度
         req_height = temp_label.winfo_reqheight()
         temp_label.destroy()
         
-        # 标题高度估算
         title_height = 30 if title else 0
         btn_height = 40
-        pad_total = 50   # 上下边距
+        pad_total = 50
         
         h = req_height + title_height + btn_height + pad_total
-        # 最小高度
         if h < 130:
             h = 130
-        # 最大高度（防止太大超出屏幕）
         if h > 400:
             h = 400
         
-        # 计算位置：宠物头顶居中
         x = self.x + (self.pet_w - w) // 2
         y = self.y - h - 10
         if y < 0:
             y = self.y + self.pet_h + 10
         win.geometry(f"{w}x{h}+{x}+{y}")
         
-        # 标题
         if title:
             title_label = tk.Label(win, text=title, font=("微软雅黑", 11, "bold"),
                                    fg="#FFD700", bg="#2E2E2E")
             title_label.pack(pady=(10, 0))
         
-        # 正文
         desc_label = tk.Label(win, text=text, font=("微软雅黑", 10),
                               fg="white", bg="#2E2E2E",
                               wraplength=300, justify="left")
         desc_label.pack(pady=10, padx=20)
         
-        # 关闭按钮
         close_btn = tk.Button(win, text="我知道了", command=win.destroy,
                               bg="#555555", fg="white", font=("微软雅黑", 9))
         close_btn.pack(pady=(0, 10))
         
-        # 自动关闭时间：每字 0.3 秒，最少 3 秒，最多 15 秒
         auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
         win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
         
-        # 跟随宠物移动
         def follow():
             if win.winfo_exists():
                 nx = self.x + (self.pet_w - w) // 2
@@ -725,7 +719,6 @@ class DesktopPet:
             self.status_win.refresh()
 
     def show_float_text(self, texts):
-        """在宠物头顶飘出浮动文字，texts 是列表如 ['饱食+5', '心情+3']"""
         base_x = self.x + self.pet_w // 2
         base_y = self.y - 20
         for i, text in enumerate(texts):
@@ -745,30 +738,16 @@ class DesktopPet:
     def _animate_float(self, win, step):
         if not win.winfo_exists():
             return
-        if step >= 40:          # 40步 × 50ms = 2秒
+        if step >= 40:
             win.destroy()
             return
         x = win.winfo_x()
-        y = win.winfo_y() - 1   # 每次向上移1像素，更平滑
+        y = win.winfo_y() - 1
         alpha = 1.0 - step / 40
         win.wm_attributes("-alpha", alpha)
         win.geometry(f"+{x}+{y}")
         self.root.after(50, lambda: self._animate_float(win, step + 1))
 
-    def _animate_float(self, win, step):
-        if not win.winfo_exists():
-            return
-        if step >= 30:
-            win.destroy()
-            return
-        x = win.winfo_x()
-        y = win.winfo_y() - 2  # 向上移动
-        alpha = 1.0 - step / 30
-        win.wm_attributes("-alpha", alpha)
-        win.geometry(f"+{x}+{y}")
-        self.root.after(50, lambda: self._animate_float(win, step + 1))
-
-    
     def show_danmu(self):
         s = self.state
         pool = []
@@ -893,7 +872,6 @@ class DesktopPet:
         self.status_win = StatusWindow(self.pet_win, self.state)
         self.status_win.win.geometry(f"+{self.x+self.pet_w+10}+{self.y}")
         
-        # 窗口关闭时自动清空引用
         def on_close():
             self.status_win.win.destroy()
             self.status_win = None
