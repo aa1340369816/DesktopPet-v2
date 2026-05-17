@@ -28,11 +28,17 @@ class UIManager:
         if h > 420:
             h = 420
 
-        x = self.pet.x + (self.pet.pet_w - w) // 2
-        y = self.pet.y - h - 12
-        if y < 0:
-            y = self.pet.y + self.pet.pet_h + 12
-        win.geometry(f"{w}x{h}+{x}+{y}")
+        # 位置更新函数（实时跟随用）
+        def update_position():
+            if win.winfo_exists():
+                x = self.pet.x + (self.pet.pet_w - w) // 2
+                y = self.pet.y - h - 12
+                if y < 0:
+                    y = self.pet.y + self.pet.pet_h + 12
+                win.geometry(f"{w}x{h}+{x}+{y}")
+
+        # 初始定位
+        update_position()
 
         if title:
             title_label = tk.Label(win, text=title, font=("Segoe UI", 12, "bold"),
@@ -45,25 +51,26 @@ class UIManager:
                               fg="#404040", bg="#FFFFFF", wraplength=300, justify="left")
         desc_label.pack(pady=(16, 0), padx=20)
 
+        # 关闭窗口时取消注册
+        def on_close():
+            self.pet.unregister_follow_window(win)
+            win.destroy()
+
         close_btn = tk.Button(win, text="我知道了", font=("Segoe UI", 10),
                               fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                               bd=1, relief="solid",
                               padx=12, pady=6,
-                              command=win.destroy)
+                              command=on_close)
         close_btn.pack(pady=16)
 
         auto_close_ms = int(max(3000, min(12000, len(text) * 250)))
-        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
-
-        def follow():
+        def auto_close():
             if win.winfo_exists():
-                nx = self.pet.x + (self.pet.pet_w - w) // 2
-                ny = self.pet.y - h - 12
-                if ny < 0:
-                    ny = self.pet.y + self.pet.pet_h + 12
-                win.geometry(f"+{nx}+{ny}")
-                win.after(200, follow)
-        follow()
+                on_close()
+        win.after(auto_close_ms, auto_close)
+
+        # 注册实时跟随
+        self.pet.register_follow_window(win, update_position)
 
     def show_toast(self, msg, duration=1500):
         if hasattr(self, 'toast_win') and self.toast_win and self.toast_win.winfo_exists():
@@ -76,23 +83,23 @@ class UIManager:
         tk.Label(toast, text=msg, fg="#1A1A1A", bg="#FFFFFF",
                  font=("Segoe UI", 12), padx=16, pady=8).pack()
         toast.update_idletasks()
-        pet_x = self.pet.pet_win.winfo_x()
-        pet_y = self.pet.pet_win.winfo_y()
-        toast.geometry(f"+{pet_x + self.pet.pet_w + 16}+{pet_y + 16}")
-        self.pet.active_notifications.append(toast)
 
-        def follow():
+        def update_position():
             if toast.winfo_exists():
-                nx = self.pet.x + self.pet.pet_w + 16
-                ny = self.pet.y + 16
-                toast.geometry(f"+{nx}+{ny}")
-                toast.after(100, follow)
-        follow()
+                x = self.pet.x + self.pet.pet_w + 16
+                y = self.pet.y + 16
+                toast.geometry(f"+{x}+{y}")
+
+        update_position()
+        self.pet.active_notifications.append(toast)
+        self.pet.register_follow_window(toast, update_position)
 
         def destroy_toast():
-            if toast in self.pet.active_notifications:
-                self.pet.active_notifications.remove(toast)
-            toast.destroy()
+            if toast.winfo_exists():
+                self.pet.unregister_follow_window(toast)
+                if toast in self.pet.active_notifications:
+                    self.pet.active_notifications.remove(toast)
+                toast.destroy()
         toast.after(duration, destroy_toast)
         self.toast_win = toast
 
@@ -135,13 +142,21 @@ class UIManager:
         tk.Label(popup, text=msg, fg="#1A1A1A", bg="#FFFFFF",
                  font=("Segoe UI", 12), padx=24, pady=16).pack()
         popup.update_idletasks()
-        pet_x = self.pet.pet_win.winfo_x()
-        pet_y = self.pet.pet_win.winfo_y()
-        popup.geometry(f"+{pet_x + self.pet.pet_w + 16}+{pet_y + 16}")
+
+        def update_position():
+            if popup.winfo_exists():
+                x = self.pet.x + self.pet.pet_w + 16
+                y = self.pet.y + 16
+                popup.geometry(f"+{x}+{y}")
+
+        update_position()
         self.pet.active_notifications.append(popup)
+        self.pet.register_follow_window(popup, update_position)
 
         def destroy_popup():
-            if popup in self.pet.active_notifications:
-                self.pet.active_notifications.remove(popup)
-            popup.destroy()
+            if popup.winfo_exists():
+                self.pet.unregister_follow_window(popup)
+                if popup in self.pet.active_notifications:
+                    self.pet.active_notifications.remove(popup)
+                popup.destroy()
         popup.after(2000, destroy_popup)
