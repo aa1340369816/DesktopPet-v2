@@ -57,6 +57,8 @@ class DesktopPet:
 
         self.anim_label = tk.Label(self.pet_win, bd=0, bg="#F0F0F0")
         self.anim_label.pack()
+        self.anim_label.pack()
+        self.pet_win.withdraw()   # 启动时先隐藏，等缓存就绪再显示
 
         if getattr(sys, 'frozen', False):
             self.base_dir = os.path.dirname(sys.executable)
@@ -144,6 +146,7 @@ class DesktopPet:
         self.decay_timer()
         self.companion_loop()
         self.auto_save_loop()
+        self.pet_win.deiconify()   # 所有准备完成，显示宠物
 
     def show_progress_bar(self, title):
         self.progress_win = tk.Toplevel(self.root)
