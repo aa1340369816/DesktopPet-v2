@@ -41,3 +41,4 @@ class StatusWindow:
         """重新绘制面板内容，保留窗口位置"""
         if self.win.winfo_exists():
             self.build()
+            self.win.update_idletasks()   # 立即刷新显示
