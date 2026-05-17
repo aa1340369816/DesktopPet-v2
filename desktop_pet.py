@@ -864,11 +864,13 @@ class DesktopPet:
             return
         self.status_win = StatusWindow(self.pet_win, self.state)
         self.status_win.win.geometry(f"+{self.x+self.pet_w+10}+{self.y}")
-        # 窗口关闭时自动把引用清掉
+        
+        # 窗口关闭时自动清空引用
         def on_close():
+            self.status_win.win.destroy()
             self.status_win = None
-        self.status_win.win.protocol("WM_DELETE_WINDOW", lambda: (self.status_win.win.destroy(), on_close()))
-        self.status_win.win.bind("<Destroy>", lambda e: on_close())
+        
+        self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
     def toggle_focus(self):
         s = self.state
