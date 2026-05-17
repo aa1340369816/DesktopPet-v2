@@ -175,29 +175,23 @@ class DesktopPet:
         try:
             reader = imageio.get_reader(video_path)
             os.makedirs(cache_dir, exist_ok=True)
-            # 紫色参考色
             ref_r, ref_g, ref_b = 149, 93, 190
             max_dist = 80
-            # 舌头保护色 #db5e61
-            tongue_r, tongue_g, tongue_b = 219, 94, 97
-            tongue_max_dist = 40
             bg_color = (240, 240, 240, 255)
             for i, frame in enumerate(reader):
                 img = Image.fromarray(frame).convert("RGBA")
                 arr = np.array(img)
-                # 计算每个像素到紫色的距离
+                # 距离紫色
                 diff = arr[:,:,:3].astype(np.float32) - np.array([ref_r, ref_g, ref_b], dtype=np.float32)
                 dist_purple = np.sqrt(np.sum(diff**2, axis=2))
-                # 计算饱和度 = max(r,g,b) - min(r,g,b)
+                # 饱和度 = max(r,g,b) - min(r,g,b)
                 max_rgb = np.max(arr[:,:,:3], axis=2)
                 min_rgb = np.min(arr[:,:,:3], axis=2)
                 saturation = max_rgb - min_rgb
-                # 计算每个像素到舌头颜色的距离
-                diff_tongue = arr[:,:,:3].astype(np.float32) - np.array([tongue_r, tongue_g, tongue_b], dtype=np.float32)
-                dist_tongue = np.sqrt(np.sum(diff_tongue**2, axis=2))
-                # 紫色区域：距离小 + 不透明 + 饱和度足够高（排除灰色） + 不是舌头
+                # 舌头保护区：R高 且 B低（#db5e61 = R219, G94, B97）
+                is_tongue = (arr[:,:,0] > 180) & (arr[:,:,2] < 140)
+                # 紫色区域：距离小 + 不透明 + 饱和度高（排除灰色） + 不是舌头
                 is_purple = (dist_purple < max_dist) & (arr[:,:,3] > 200) & (saturation > 25)
-                is_tongue = dist_tongue < tongue_max_dist
                 mask = is_purple & (~is_tongue)
                 arr[mask] = bg_color
                 img = Image.fromarray(arr)
