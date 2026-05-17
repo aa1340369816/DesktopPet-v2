@@ -915,6 +915,96 @@ class DesktopPet:
 
         self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
+    def show_tray_status(self, *args):
+        """双击托盘图标时展示的状态面板（属性 + 活动进度）"""
+        win = tk.Toplevel(self.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.configure(bg="#FFFFFF")
+        win.attributes("-alpha", 1.0)
+
+        w = 300
+        pad = 20
+        s = self.state
+
+        # ---- 标题 ----
+        title = tk.Label(win, text="练习生状态", font=("Segoe UI", 12, "bold"),
+                         fg="#000000", bg="#FFFFFF")
+        title.pack(pady=(pad, 0))
+
+        # 分隔线
+        tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+
+        # ---- 基础属性 ----
+        info_frame = tk.Frame(win, bg="#FFFFFF")
+        info_frame.pack(pady=(pad, 0), padx=pad, fill="x")
+
+        lines = [
+            f"身份：{s.stage_name}  Lv.{s.level}",
+            f"💰{s.gold}金币   ❤️{s.health}/100",
+            f"🍖{int(s.satiety)}  😊{int(s.mood)}  ⚡{int(s.stamina)}  🧹{int(s.hygiene)}",
+            f"😫疲劳 {int(s.fatigue)}  {'🤒生病' if s.sick else '😄健康'}"
+        ]
+        for line in lines:
+            tk.Label(info_frame, text=line, font=("Segoe UI", 10),
+                     fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
+
+        # ---- 当前活动进度 ----
+        activity_name = None
+        progress_pct = 0
+        progress_text = ""
+
+        if self.current_activity and hasattr(self.current_activity, 'get_progress'):
+            activity_name = self.current_activity.win.title() if hasattr(self.current_activity.win, 'title') else "活动中"
+            progress_pct, progress_text = self.current_activity.get_progress()
+        elif self.performance_win and hasattr(self.performance_win, 'get_progress'):
+            activity_name = "训练/通告中"
+            progress_pct, progress_text = self.performance_win.get_progress()
+
+        if activity_name:
+            sep2 = tk.Frame(win, height=1, bg="#E5E5E5")
+            sep2.pack(fill="x", padx=pad, pady=(pad, 0))
+
+            tk.Label(win, text=f"当前：{activity_name}", font=("Segoe UI", 10, "bold"),
+                     fg="#000000", bg="#FFFFFF").pack(pady=(12, 0))
+
+            # 极细进度条
+            bar_canvas = tk.Canvas(win, width=260, height=3, bg="#E5E5E5", highlightthickness=0)
+            bar_canvas.pack(pady=(8, 4), padx=pad)
+            bar_canvas.create_rectangle(0, 0, 260 * progress_pct / 100, 3, fill="#000000", outline="")
+            tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
+                     fg="#808080", bg="#FFFFFF").pack()
+        else:
+            tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
+                     fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
+
+        # ---- 关闭按钮 ----
+        btn = tk.Button(win, text="关闭", font=("Segoe UI", 10),
+                        fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                        bd=1, relief="solid", padx=12, pady=4,
+                        command=win.destroy)
+        btn.pack(pady=(pad, pad))
+
+        # 自适应高度，放置在宠物附近
+        win.update_idletasks()
+        h = win.winfo_reqheight()
+        x = self.x + (self.pet_w - w) // 2
+        y = self.y + self.pet_h + 16
+        if y + h > self.pet_win.winfo_screenheight():
+            y = self.y - h - 16
+        win.geometry(f"{w}x{h}+{x}+{y}")
+
+        # 跟随宠物移动（如果窗口还在）
+        def follow():
+            if win.winfo_exists():
+                nx = self.x + (self.pet_w - w) // 2
+                ny = self.y + self.pet_h + 16
+                if ny + h > self.pet_win.winfo_screenheight():
+                    ny = self.y - h - 16
+                win.geometry(f"+{nx}+{ny}")
+                win.after(200, follow)
+        follow()
+    
     def toggle_focus(self):
         s = self.state
         if not s.focus_mode:
@@ -949,7 +1039,8 @@ class DesktopPet:
         draw.ellipse((34, 22, 42, 30), fill="white")
         draw.arc((22, 34, 42, 44), start=0, end=180, fill="white", width=2)
         menu = pystray.Menu(
-            pystray.MenuItem("显示宠物", self.show_pet, default=True),
+            pystray.MenuItem("状态面板", self.show_tray_status, default=True),  # 双击触发
+            pystray.MenuItem("显示宠物", self.show_pet),
             pystray.MenuItem("专注模式", self.toggle_focus),
             pystray.MenuItem("开机自启", self.toggle_startup, checked=lambda item: get_startup_status()),
             pystray.MenuItem("退出", self.quit_app)
