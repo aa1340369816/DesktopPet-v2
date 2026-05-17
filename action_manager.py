@@ -12,28 +12,25 @@ class ActionManager:
         if job == "便利店兼职":
             self.pet.anim_manager.play_store_animation()
             duration = 3600
-            game_hours = 1
             def effect(state):
                 state.gold += 20
                 state.gain_exp(5)
                 self.pet.anim_manager.switch_to_idle()
         elif job == "咖啡店打工":
             duration = 3600
-            game_hours = 1
             def effect(state):
                 state.gold += 15
                 state.charm += 3
                 state.gain_exp(5)
         elif job == "快递分拣":
             duration = 5400
-            game_hours = 1.5
             def effect(state):
                 state.gold += 30
                 state.stamina = max(0, state.stamina - 15)
                 state.gain_exp(5)
         else:
             return
-        self.start_activity(job, 0, duration, effect, game_hours=game_hours)
+        self.start_activity(job, 0, duration, effect)
 
     def buy_training(self, course):
         s = self.pet.state
@@ -41,12 +38,10 @@ class ActionManager:
             cost = 60
             gain = 15
             duration = 5400
-            game_hours = 1.5
         else:
             cost = 30
             gain = 8
             duration = 3600
-            game_hours = 1
         if "声乐" in course:
             attr = "vocal"
         elif "舞蹈" in course:
@@ -61,7 +56,7 @@ class ActionManager:
                 setattr(state, attr, getattr(state, attr) + gain)
             state.gain_exp(10)
 
-        self.start_activity(course, cost, duration, effect, game_hours=game_hours)
+        self.start_activity(course, cost, duration, effect)
 
     def street_performance(self):
         s = self.pet.state
@@ -76,7 +71,7 @@ class ActionManager:
             state.charm += 5
             state.gain_exp(5)
 
-        self.start_activity("街头表演", 0, 3600, effect, game_hours=1)
+        self.start_activity("街头表演", 0, 3600, effect)
 
     def start_interview(self):
         s = self.pet.state
