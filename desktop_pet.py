@@ -694,19 +694,31 @@ class DesktopPet:
         base_x = self.x + self.pet_w // 2
         base_y = self.y - 20
         for i, text in enumerate(texts):
-            # 每个文字错开一点位置
-            offset_x = (i % 3 - 1) * 40   # -40, 0, 40
-            offset_y = -(i // 3) * 25
+            offset_x = (i % 3 - 1) * 50
+            offset_y = -(i // 3) * 30
             win = tk.Toplevel(self.pet_win)
             win.overrideredirect(True)
             win.wm_attributes("-topmost", True)
             win.wm_attributes("-transparentcolor", "#F0F0F0")
             win.configure(bg="#F0F0F0")
-            label = tk.Label(win, text=text, font=("微软雅黑", 12, "bold"),
+            label = tk.Label(win, text=text, font=("微软雅黑", 14, "bold"),
                              fg="#FFD700", bg="#F0F0F0")
             label.pack()
             win.geometry(f"+{base_x + offset_x}+{base_y + offset_y}")
             self._animate_float(win, 0)
+
+    def _animate_float(self, win, step):
+        if not win.winfo_exists():
+            return
+        if step >= 40:          # 40步 × 50ms = 2秒
+            win.destroy()
+            return
+        x = win.winfo_x()
+        y = win.winfo_y() - 1   # 每次向上移1像素，更平滑
+        alpha = 1.0 - step / 40
+        win.wm_attributes("-alpha", alpha)
+        win.geometry(f"+{x}+{y}")
+        self.root.after(50, lambda: self._animate_float(win, step + 1))
 
     def _animate_float(self, win, step):
         if not win.winfo_exists():
