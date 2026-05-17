@@ -320,60 +320,63 @@ class DesktopPet:
 
     # ==================== 极简 UI 方法 ====================
     def show_narrative_window(self, text, title=""):
-        """极简叙事窗口：白底、黑字、细线分隔、自动关闭"""
+        """极简叙事窗口：缩小字体，加厚按钮"""
         win = tk.Toplevel(self.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#FFFFFF")
         win.attributes("-alpha", 1.0)
 
-        w = 360
-        temp_label = tk.Label(win, text=text, font=("Segoe UI", 12),
-                              fg="#404040", bg="#FFFFFF", wraplength=320, justify="left")
+        w = 340
+        # 临时标签测量高度（字体 10pt）
+        temp_label = tk.Label(win, text=text, font=("Segoe UI", 10),
+                              fg="#404040", bg="#FFFFFF", wraplength=300, justify="left")
         win.update_idletasks()
         req_height = temp_label.winfo_reqheight()
         temp_label.destroy()
 
-        title_height = 36 if title else 0
-        btn_height = 48
-        pad_total = 64
+        title_height = 32 if title else 0
+        btn_height = 42
+        pad_total = 56
         h = req_height + title_height + btn_height + pad_total
-        if h < 180:
-            h = 180
-        if h > 500:
-            h = 500
+        if h < 160:
+            h = 160
+        if h > 420:
+            h = 420
 
         x = self.x + (self.pet_w - w) // 2
-        y = self.y - h - 16
+        y = self.y - h - 12
         if y < 0:
-            y = self.y + self.pet_h + 16
+            y = self.y + self.pet_h + 12
         win.geometry(f"{w}x{h}+{x}+{y}")
 
         if title:
-            title_label = tk.Label(win, text=title, font=("Segoe UI", 14, "bold"),
+            title_label = tk.Label(win, text=title, font=("Segoe UI", 12, "bold"),
                                    fg="#000000", bg="#FFFFFF")
-            title_label.pack(pady=(24, 0))
+            title_label.pack(pady=(20, 0))
             sep = tk.Frame(win, height=1, bg="#E5E5E5")
-            sep.pack(fill="x", padx=24, pady=(16, 0))
+            sep.pack(fill="x", padx=20, pady=(12, 0))
 
-        desc_label = tk.Label(win, text=text, font=("Segoe UI", 12),
-                              fg="#404040", bg="#FFFFFF", wraplength=320, justify="left")
-        desc_label.pack(pady=(24, 0), padx=24)
+        desc_label = tk.Label(win, text=text, font=("Segoe UI", 10),
+                              fg="#404040", bg="#FFFFFF", wraplength=300, justify="left")
+        desc_label.pack(pady=(16, 0), padx=20)
 
-        close_btn = tk.Button(win, text="我知道了", font=("Segoe UI", 12),
+        close_btn = tk.Button(win, text="我知道了", font=("Segoe UI", 10),
                               fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                              bd=1, relief="solid", command=win.destroy)
-        close_btn.pack(pady=24)
+                              bd=1, relief="solid",
+                              padx=12, pady=6,           # 加厚按钮
+                              command=win.destroy)
+        close_btn.pack(pady=16)
 
-        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
+        auto_close_ms = int(max(3000, min(12000, len(text) * 250)))
         win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
 
         def follow():
             if win.winfo_exists():
                 nx = self.x + (self.pet_w - w) // 2
-                ny = self.y - h - 16
+                ny = self.y - h - 12
                 if ny < 0:
-                    ny = self.y + self.pet_h + 16
+                    ny = self.y + self.pet_h + 12
                 win.geometry(f"+{nx}+{ny}")
                 win.after(200, follow)
         follow()
