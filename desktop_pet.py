@@ -782,25 +782,40 @@ class DesktopPet:
         danmu.wm_attributes("-topmost", True)
         danmu.wm_attributes("-alpha", 0.8)
         danmu.configure(bg="black")
-        sx = self.x + self.pet_w//2
-        sy = self.y - 10
-        danmu.geometry(f"+{sx}+{sy}")
+        danmu.geometry(f"+{self.x}+{self.y}")  # 临时坐标，马上在 animate 中更新
         tk.Label(danmu, text=text, fg="white", bg="black", font=("微软雅黑", 9), padx=5, pady=2).pack()
         self.danmu_win = danmu
-        self.animate_danmu(sx, sy)
+        self.animate_danmu(0)   # 从步数 0 开始，不再传固定坐标
 
-    def animate_danmu(self, x, y, step=0):
+    def animate_danmu(self, step=0):
         if step > 40 or not self.danmu_win or not self.danmu_win.winfo_exists():
             if self.danmu_win:
                 self.danmu_win.destroy()
                 self.danmu_win = None
             return
-        x -= 2
-        y -= 1
+        
+        # 1. 获取宠物当前的头顶中央位置
+        base_x = self.x + self.pet_w // 2
+        base_y = self.y - 10
+        
+        # 2. 飘移偏移量（向左上角移动）
+        offset_x = step * 2      # 每步左移 2 像素
+        offset_y = step * 1      # 每步上移 1 像素
+        
+        # 3. 弹幕最终位置 = 基准位置 + 飘移
+        x = base_x - offset_x
+        y = base_y - offset_y
         self.danmu_win.geometry(f"+{x}+{y}")
+        
+        # 4. 透明度变化（后半段逐渐淡出）
         if step > 20:
-            self.danmu_win.wm_attributes("-alpha", max(0.2, 0.8-(step-20)*0.03))
-        self.root.after(100, lambda: self.animate_danmu(x, y, step+1))
+            alpha = max(0.2, 0.8 - (step - 20) * 0.03)
+        else:
+            alpha = 0.8
+        self.danmu_win.wm_attributes("-alpha", alpha)
+        
+        # 5. 下一帧
+        self.root.after(100, lambda: self.animate_danmu(step + 1))
 
     # ==================== 陪伴循环 ====================
     def companion_loop(self):
