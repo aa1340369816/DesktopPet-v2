@@ -72,6 +72,7 @@ class DesktopPet:
         self.danmu_win = None
         self.current_activity = None
         self.toast_win = None
+        self.status_win = None
 
         self.tray = None
         self.create_tray()
@@ -547,6 +548,7 @@ class DesktopPet:
                 s.game_time.advance_hours(game_hours)
             self.show_toast(f"✅ {name}完成")
             s.save()
+            self.refresh_status()
         def on_cancel():
             if price > 0:
                 s.gold += price
@@ -578,6 +580,7 @@ class DesktopPet:
         if msg:
             self.show_info(msg)
         self.state.save()
+        self.refresh_status()
 
     def show_info(self, msg):
         self.pet_win.update_idletasks()
@@ -688,6 +691,9 @@ class DesktopPet:
         # 自动关闭定时器
         win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
 
+    def refresh_status(self):
+        if self.status_win and self.status_win.win.winfo_exists():
+            self.status_win.refresh()
 
     def show_float_text(self, texts):
         """在宠物头顶飘出浮动文字，texts 是列表如 ['饱食+5', '心情+3']"""
@@ -838,10 +844,12 @@ class DesktopPet:
     def sleep(self):
         self.state.sleep(40)
         self.state.save()
+        self.refresh_status()
 
     def cure(self):
         self.state.cure()
         self.state.save()
+        self.refresh_status()
 
     def open_shop(self):
         if self.shop_win and self.shop_win.win.winfo_exists():
@@ -850,8 +858,16 @@ class DesktopPet:
         self.shop_win = ShopWindow(self.pet_win, self.state)
 
     def show_status(self):
-        win = StatusWindow(self.pet_win, self.state)
-        win.win.geometry(f"+{self.x+self.pet_w+10}+{self.y}")
+        if self.status_win and self.status_win.win.winfo_exists():
+            self.status_win.win.lift()
+            return
+        self.status_win = StatusWindow(self.pet_win, self.state)
+        self.status_win.win.geometry(f"+{self.x+self.pet_w+10}+{self.y}")
+        # 窗口关闭时自动把引用清掉
+        def on_close():
+            self.status_win = None
+        self.status_win.win.protocol("WM_DELETE_WINDOW", lambda: (self.status_win.win.destroy(), on_close()))
+        self.status_win.win.bind("<Destroy>", lambda e: on_close())
 
     def toggle_focus(self):
         s = self.state
@@ -896,6 +912,7 @@ class DesktopPet:
 
     def decay_timer(self):
         self.state.decay()
+        self.refresh_status()
         self.root.after(15000, self.decay_timer)
 
     def start_drag(self, event):
