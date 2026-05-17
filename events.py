@@ -1467,8 +1467,8 @@ class EventScheduler:
         self.next_check_time = now + random.randint(300, 1800)
 
         # 概率过滤（50%）
-        if random.random() > 0.5:
-            return
+        # if random.random() > 0.5:
+        #     return
 
         # 筛选可用事件
         available = []
