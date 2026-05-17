@@ -24,16 +24,26 @@ class StatusWindow:
         # 分隔线
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=24, pady=(16,0))
 
-        # 信息区（使用统一字体和间距）
+        # 信息区
         info_frame = tk.Frame(self.win, bg="#FFFFFF")
         info_frame.pack(pady=16, padx=24, fill="x")
 
-        texts = [
-            f"🕒 {real_time_str}",
-            s.game_time.get_time_str(),
-            f"身份：{s.stage_name} (路线{'公开' if s.route==1 else '未公开' if s.route==2 else '未定'})",
-            f"⭐等级 {s.level}   💰金币 {s.gold}",
-            f"❤️ 健康度：{s.health}/100",
+        # 现实时间
+        tk.Label(info_frame, text=f"🕒 {real_time_str}", font=("Segoe UI", 10),
+                 fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=2)
+
+        # 身份 / 等级 / 金币
+        tk.Label(info_frame, text=f"身份：{s.stage_name} (路线{'公开' if s.route==1 else '未公开' if s.route==2 else '未定'})",
+                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
+        tk.Label(info_frame, text=f"⭐等级 {s.level}   💰金币 {s.gold}",
+                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
+
+        # 健康
+        tk.Label(info_frame, text=f"❤️ 健康度：{s.health}/100",
+                 font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF", anchor="w").pack(fill="x", pady=4)
+
+        # 其他属性
+        attrs = [
             f"🍖饱食 {int(s.satiety)}/100     😊心情 {int(s.mood)}/100",
             f"⚡体力 {int(s.stamina)}/100     🧹清洁 {int(s.hygiene)}/100",
             f"😫疲劳 {int(s.fatigue)}     🏥 {'🤒生病' if s.sick else '😄健康'}",
@@ -42,8 +52,8 @@ class StatusWindow:
             f"✨魅力 {int(s.charm)}     📈人气 {int(s.popularity)}",
             f"👥粉丝 {int(s.fans)}"
         ]
-        for line in texts:
-            tk.Label(info_frame, text=line, font=("Segoe UI", 12),
+        for attr in attrs:
+            tk.Label(info_frame, text=attr, font=("Segoe UI", 12),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=4)
 
     def refresh(self):
