@@ -382,7 +382,7 @@ class DesktopPet:
         follow()
 
     def show_toast(self, msg, duration=1500):
-        """极简 Toast：白底、黑字、细灰边框"""
+        """极简 Toast：白底、黑字、细灰边框，跟随宠物移动"""
         if hasattr(self, 'toast_win') and self.toast_win and self.toast_win.winfo_exists():
             self.toast_win.destroy()
         self.pet_win.update_idletasks()
@@ -398,6 +398,16 @@ class DesktopPet:
         toast.geometry(f"+{pet_x + self.pet_w + 16}+{pet_y + 16}")
         self.active_notifications.append(toast)
 
+        # 跟随宠物移动
+        def follow():
+            if toast.winfo_exists():
+                nx = self.x + self.pet_w + 16
+                ny = self.y + 16
+                toast.geometry(f"+{nx}+{ny}")
+                toast.after(100, follow)   # 每 100ms 更新一次位置
+        follow()
+
+        # 定时销毁
         def destroy_toast():
             if toast in self.active_notifications:
                 self.active_notifications.remove(toast)
