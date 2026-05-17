@@ -98,7 +98,7 @@ class ActionManager:
         self.pet.ui_manager.show_toast(f"使用 {name}")
         self.start_activity(name, 0, duration, effect_func)
 
-    def start_activity(self, name, price, duration, effect_func, game_hours=0):
+    def start_activity(self, name, price, duration, effect_func):
         s = self.pet.state
         if price > 0 and s.gold < price:
             self.pet.ui_manager.show_info("金币不足！")
@@ -110,8 +110,6 @@ class ActionManager:
 
         def on_finish():
             effect_func(s)
-            if game_hours > 0:
-                s.game_time.advance_hours(game_hours)
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
             s.save()
             self.pet.refresh_status()
@@ -125,7 +123,8 @@ class ActionManager:
             self.pet.event_scheduler.set_action(None)
 
         self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
-                                                   pet_x=self.pet.x, pet_y=self.pet.y, pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                   pet_x=self.pet.x, pet_y=self.pet.y,
+                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
                                                    visible=False)
 
     def start_train(self, type_):
