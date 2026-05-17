@@ -5,7 +5,6 @@ import os
 import sys
 import time
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageTk, ImageDraw
 import pystray
 import ctypes
@@ -20,6 +19,7 @@ from status_window import StatusWindow
 from performance_window import PerformanceWindow
 from activity_monitor import ActivityMonitor
 from events import EventScheduler
+
 
 class DesktopPet:
     def __init__(self, image_folder="pet_frames"):
@@ -90,10 +90,10 @@ class DesktopPet:
             self.refresh_status
         )
 
+    # ---------- 后台缓存生成 ----------
     def _generate_caches_async(self):
         scales = [1.5, 2.0]
         tasks = []
-        # 收集所有需要生成缓存的任务
         for scale in scales:
             if not self.cache_exists(scale, "greet"):
                 tasks.append((scale, "greet"))
@@ -101,8 +101,8 @@ class DesktopPet:
                 tasks.append((scale, "idle"))
             if not self.cache_exists(scale, "store"):
                 tasks.append((scale, "store"))
-        # 并行执行所有任务
         if tasks:
+            from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=4) as executor:
                 for scale, name in tasks:
                     executor.submit(self.ensure_cache_for_scale, scale, name)
@@ -148,15 +148,17 @@ class DesktopPet:
         self.progress_win.title("加载中")
         self.progress_win.geometry("300x100")
         self.progress_win.resizable(False, False)
+        self.progress_win.configure(bg="#FFFFFF")
         self.progress_win.update_idletasks()
         sw = self.progress_win.winfo_screenwidth()
         sh = self.progress_win.winfo_screenheight()
         x = (sw - 300) // 2
         y = (sh - 100) // 2
         self.progress_win.geometry(f"+{x}+{y}")
-        tk.Label(self.progress_win, text=title, font=("微软雅黑", 11)).pack(pady=15)
+        tk.Label(self.progress_win, text=title, font=("Segoe UI", 12),
+                 fg="#1A1A1A", bg="#FFFFFF").pack(pady=24)
         self.progress_bar = ttk.Progressbar(self.progress_win, length=250, mode='indeterminate')
-        self.progress_bar.pack(pady=10)
+        self.progress_bar.pack(pady=16)
         self.progress_bar.start(10)
         self.progress_win.lift()
 
@@ -188,20 +190,15 @@ class DesktopPet:
             for i, frame in enumerate(reader):
                 img = Image.fromarray(frame).convert("RGBA")
                 arr = np.array(img)
-                # 距离紫色
                 diff = arr[:,:,:3].astype(np.float32) - np.array([ref_r, ref_g, ref_b], dtype=np.float32)
                 dist_purple = np.sqrt(np.sum(diff**2, axis=2))
-                # 饱和度
                 max_rgb = np.max(arr[:,:,:3], axis=2)
                 min_rgb = np.min(arr[:,:,:3], axis=2)
                 saturation = max_rgb - min_rgb
-                # 舌头保护
                 is_tongue = (arr[:,:,0] > 180) & (arr[:,:,2] < 140)
-                # 紫色背景 mask
                 is_bg = (dist_purple < max_dist) & (arr[:,:,3] > 200) & (saturation > 25)
                 mask = is_bg & (~is_tongue)
                 arr[mask] = bg_color
-                
                 img = Image.fromarray(arr)
                 img.thumbnail((target_w, target_h), Image.LANCZOS)
                 canvas = Image.new("RGBA", (target_w, target_h), bg_color)
@@ -308,9 +305,7 @@ class DesktopPet:
             if self.static_img:
                 self.anim_label.configure(image=self.static_img)
 
-    # ---------- 便利店打工动画 ----------
     def play_store_animation(self):
-        """播放便利店打工动画（循环），直到被停止"""
         self.ensure_cache_for_scale(self.state.scale, "store")
         cache_dir = os.path.join(self.base_dir, f"store_{self.state.scale}x_frames")
         frames = self.load_png_frames(cache_dir)
@@ -323,6 +318,143 @@ class DesktopPet:
         self.anim_label.bind("<Double-Button-1>", lambda e: self.hide_pet())
         self.anim_label.bind("<Button-3>", self.right_click_menu)
 
+    # ==================== 极简 UI 方法 ====================
+    def show_narrative_window(self, text, title=""):
+        """极简叙事窗口：白底、黑字、细线分隔、自动关闭"""
+        win = tk.Toplevel(self.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.configure(bg="#FFFFFF")
+        win.attributes("-alpha", 1.0)
+
+        w = 360
+        temp_label = tk.Label(win, text=text, font=("Segoe UI", 12),
+                              fg="#404040", bg="#FFFFFF", wraplength=320, justify="left")
+        win.update_idletasks()
+        req_height = temp_label.winfo_reqheight()
+        temp_label.destroy()
+
+        title_height = 36 if title else 0
+        btn_height = 48
+        pad_total = 64
+        h = req_height + title_height + btn_height + pad_total
+        if h < 180:
+            h = 180
+        if h > 500:
+            h = 500
+
+        x = self.x + (self.pet_w - w) // 2
+        y = self.y - h - 16
+        if y < 0:
+            y = self.y + self.pet_h + 16
+        win.geometry(f"{w}x{h}+{x}+{y}")
+
+        if title:
+            title_label = tk.Label(win, text=title, font=("Segoe UI", 14, "bold"),
+                                   fg="#000000", bg="#FFFFFF")
+            title_label.pack(pady=(24, 0))
+            sep = tk.Frame(win, height=1, bg="#E5E5E5")
+            sep.pack(fill="x", padx=24, pady=(16, 0))
+
+        desc_label = tk.Label(win, text=text, font=("Segoe UI", 12),
+                              fg="#404040", bg="#FFFFFF", wraplength=320, justify="left")
+        desc_label.pack(pady=(24, 0), padx=24)
+
+        close_btn = tk.Button(win, text="我知道了", font=("Segoe UI", 12),
+                              fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                              bd=1, relief="solid", command=win.destroy)
+        close_btn.pack(pady=24)
+
+        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
+        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
+
+        def follow():
+            if win.winfo_exists():
+                nx = self.x + (self.pet_w - w) // 2
+                ny = self.y - h - 16
+                if ny < 0:
+                    ny = self.y + self.pet_h + 16
+                win.geometry(f"+{nx}+{ny}")
+                win.after(200, follow)
+        follow()
+
+    def show_toast(self, msg, duration=1500):
+        """极简 Toast：白底、黑字、细灰边框"""
+        if hasattr(self, 'toast_win') and self.toast_win and self.toast_win.winfo_exists():
+            self.toast_win.destroy()
+        self.pet_win.update_idletasks()
+        toast = tk.Toplevel(self.root)
+        toast.overrideredirect(True)
+        toast.wm_attributes("-topmost", True)
+        toast.configure(bg="#FFFFFF", highlightbackground="#CCCCCC", highlightthickness=1)
+        tk.Label(toast, text=msg, fg="#1A1A1A", bg="#FFFFFF",
+                 font=("Segoe UI", 12), padx=16, pady=8).pack()
+        toast.update_idletasks()
+        pet_x = self.pet_win.winfo_x()
+        pet_y = self.pet_win.winfo_y()
+        toast.geometry(f"+{pet_x + self.pet_w + 16}+{pet_y + 16}")
+        self.active_notifications.append(toast)
+
+        def destroy_toast():
+            if toast in self.active_notifications:
+                self.active_notifications.remove(toast)
+            toast.destroy()
+        toast.after(duration, destroy_toast)
+        self.toast_win = toast
+
+    def show_float_text(self, texts):
+        """极简浮动文字：蓝色点缀"""
+        base_x = self.x + self.pet_w // 2
+        base_y = self.y - 24
+        for i, text in enumerate(texts):
+            offset_x = (i % 3 - 1) * 48
+            offset_y = -(i // 3) * 32
+            win = tk.Toplevel(self.pet_win)
+            win.overrideredirect(True)
+            win.wm_attributes("-topmost", True)
+            win.wm_attributes("-transparentcolor", "#F0F0F0")
+            win.configure(bg="#F0F0F0")
+            label = tk.Label(win, text=text, font=("Segoe UI", 16, "normal"),
+                             fg="#0066FF", bg="#F0F0F0")
+            label.pack()
+            win.geometry(f"+{base_x + offset_x}+{base_y + offset_y}")
+            self._animate_float(win, 0)
+
+    def _animate_float(self, win, step):
+        if not win.winfo_exists():
+            return
+        if step >= 40:
+            win.destroy()
+            return
+        x = win.winfo_x()
+        y = win.winfo_y() - 1
+        alpha = 1.0 - step / 40
+        win.wm_attributes("-alpha", alpha)
+        win.geometry(f"+{x}+{y}")
+        self.root.after(50, lambda: self._animate_float(win, step + 1))
+
+    def show_info(self, msg):
+        """极简消息弹窗（用于错误提示等）"""
+        self.pet_win.update_idletasks()
+        popup = tk.Toplevel(self.root)
+        popup.overrideredirect(True)
+        popup.wm_attributes("-topmost", True)
+        popup.configure(bg="#FFFFFF", highlightbackground="#CCCCCC", highlightthickness=1)
+        tk.Label(popup, text=msg, fg="#1A1A1A", bg="#FFFFFF",
+                 font=("Segoe UI", 12), padx=24, pady=16).pack()
+        popup.update_idletasks()
+        pet_x = self.pet_win.winfo_x()
+        pet_y = self.pet_win.winfo_y()
+        popup.geometry(f"+{pet_x + self.pet_w + 16}+{pet_y + 16}")
+        self.active_notifications.append(popup)
+
+        def destroy_popup():
+            if popup in self.active_notifications:
+                self.active_notifications.remove(popup)
+            popup.destroy()
+        popup.after(2000, destroy_popup)
+
+    # ==================== 食物 / 护肤效果表 ====================
     feed_effect_map = {
         "超级食物碗": (20, lambda s: s.feed(30,5,0)),
         "波奇饭便当": (25, lambda s: s.feed(40,8,5)),
@@ -350,6 +482,7 @@ class DesktopPet:
         "香薰水疗": (60, lambda s: (setattr(s,'hygiene',min(100,s.hygiene+100)), setattr(s,'stamina',min(100,s.stamina+10)), setattr(s,'mood',min(100,s.mood+40)), setattr(s,'charm',s.charm+12))),
     }
 
+    # ==================== 右键菜单 ====================
     def right_click_menu(self, event):
         menu = tk.Menu(self.pet_win, tearoff=0)
         s = self.state
@@ -457,16 +590,17 @@ class DesktopPet:
                 self.progress_win.destroy()
             self.set_scale(result)
 
+    # ==================== 打工 / 培训 / 表演 ====================
     def do_part_time_job(self, job):
         s = self.state
         if job == "便利店兼职":
-            self.play_store_animation()          # 开始打工动画
+            self.play_store_animation()
             duration = 3600
             game_hours = 1
             def effect(state):
                 state.gold += 20
                 state.gain_exp(5)
-                self.switch_to_idle()            # 打工结束切回待机
+                self.switch_to_idle()
         elif job == "咖啡店打工":
             duration = 3600
             game_hours = 1
@@ -617,150 +751,12 @@ class DesktopPet:
         self.refresh_status()
         self.event_scheduler.set_action(None)
 
-    def show_info(self, msg):
-        self.pet_win.update_idletasks()
-        popup = tk.Toplevel(self.root)
-        popup.overrideredirect(True)
-        popup.wm_attributes("-topmost", True)
-        popup.configure(bg="black")
-        tk.Label(popup, text=msg, fg="white", bg="black", font=("微软雅黑", 10)).pack(padx=10, pady=5)
-        popup.update_idletasks()
-        pet_x = self.pet_win.winfo_x()
-        pet_y = self.pet_win.winfo_y()
-        popup.geometry(f"+{pet_x + self.pet_w + 5}+{pet_y + 5}")
-        self.active_notifications.append(popup)
-        def destroy_popup():
-            if popup in self.active_notifications:
-                self.active_notifications.remove(popup)
-            popup.destroy()
-        popup.after(2000, destroy_popup)
-
-    def show_toast(self, msg, duration=1500):
-        if hasattr(self, 'toast_win') and self.toast_win and self.toast_win.winfo_exists():
-            self.toast_win.destroy()
-        self.pet_win.update_idletasks()
-        toast = tk.Toplevel(self.root)
-        toast.overrideredirect(True)
-        toast.wm_attributes("-topmost", True)
-        toast.wm_attributes("-alpha", 0.85)
-        toast.configure(bg="#333333")
-        tk.Label(toast, text=msg, fg="white", bg="#333333", font=("微软雅黑", 9, "bold"), padx=8, pady=2).pack()
-        toast.update_idletasks()
-        pet_x = self.pet_win.winfo_x()
-        pet_y = self.pet_win.winfo_y()
-        toast.geometry(f"+{pet_x + self.pet_w + 5}+{pet_y + 5}")
-        self.active_notifications.append(toast)
-        def destroy_toast():
-            if toast in self.active_notifications:
-                self.active_notifications.remove(toast)
-            toast.destroy()
-        toast.after(duration, destroy_toast)
-        self.toast_win = toast
-
-    def move_notifications(self):
-        for popup in self.active_notifications[:]:
-            try:
-                if popup.winfo_exists():
-                    pet_x = self.pet_win.winfo_x()
-                    pet_y = self.pet_win.winfo_y()
-                    popup.geometry(f"+{pet_x + self.pet_w + 5}+{pet_y + 5}")
-            except:
-                if popup in self.active_notifications:
-                    self.active_notifications.remove(popup)
-
-    def show_narrative_window(self, text, title=""):
-        win = tk.Toplevel(self.pet_win)
-        win.overrideredirect(True)
-        win.wm_attributes("-topmost", True)
-        win.configure(bg="#2E2E2E")
-        win.attributes("-alpha", 0.92)
-        
-        w = 340
-        
-        temp_label = tk.Label(win, text=text, font=("微软雅黑", 10),
-                              fg="white", bg="#2E2E2E",
-                              wraplength=300, justify="left")
-        win.update_idletasks()
-        req_height = temp_label.winfo_reqheight()
-        temp_label.destroy()
-        
-        title_height = 30 if title else 0
-        btn_height = 40
-        pad_total = 50
-        
-        h = req_height + title_height + btn_height + pad_total
-        if h < 130:
-            h = 130
-        if h > 400:
-            h = 400
-        
-        x = self.x + (self.pet_w - w) // 2
-        y = self.y - h - 10
-        if y < 0:
-            y = self.y + self.pet_h + 10
-        win.geometry(f"{w}x{h}+{x}+{y}")
-        
-        if title:
-            title_label = tk.Label(win, text=title, font=("微软雅黑", 11, "bold"),
-                                   fg="#FFD700", bg="#2E2E2E")
-            title_label.pack(pady=(10, 0))
-        
-        desc_label = tk.Label(win, text=text, font=("微软雅黑", 10),
-                              fg="white", bg="#2E2E2E",
-                              wraplength=300, justify="left")
-        desc_label.pack(pady=10, padx=20)
-        
-        close_btn = tk.Button(win, text="我知道了", command=win.destroy,
-                              bg="#555555", fg="white", font=("微软雅黑", 9))
-        close_btn.pack(pady=(0, 10))
-        
-        auto_close_ms = int(max(3000, min(15000, len(text) * 300)))
-        win.after(auto_close_ms, lambda: win.destroy() if win.winfo_exists() else None)
-        
-        def follow():
-            if win.winfo_exists():
-                nx = self.x + (self.pet_w - w) // 2
-                ny = self.y - h - 10
-                if ny < 0:
-                    ny = self.y + self.pet_h + 10
-                win.geometry(f"+{nx}+{ny}")
-                win.after(200, follow)
-        follow()
-
+    # ==================== 状态面板刷新 ====================
     def refresh_status(self):
         if self.status_win and self.status_win.win.winfo_exists():
             self.status_win.refresh()
 
-    def show_float_text(self, texts):
-        base_x = self.x + self.pet_w // 2
-        base_y = self.y - 20
-        for i, text in enumerate(texts):
-            offset_x = (i % 3 - 1) * 50
-            offset_y = -(i // 3) * 30
-            win = tk.Toplevel(self.pet_win)
-            win.overrideredirect(True)
-            win.wm_attributes("-topmost", True)
-            win.wm_attributes("-transparentcolor", "#F0F0F0")
-            win.configure(bg="#F0F0F0")
-            label = tk.Label(win, text=text, font=("微软雅黑", 14, "bold"),
-                             fg="#FFD700", bg="#F0F0F0")
-            label.pack()
-            win.geometry(f"+{base_x + offset_x}+{base_y + offset_y}")
-            self._animate_float(win, 0)
-
-    def _animate_float(self, win, step):
-        if not win.winfo_exists():
-            return
-        if step >= 40:
-            win.destroy()
-            return
-        x = win.winfo_x()
-        y = win.winfo_y() - 1
-        alpha = 1.0 - step / 40
-        win.wm_attributes("-alpha", alpha)
-        win.geometry(f"+{x}+{y}")
-        self.root.after(50, lambda: self._animate_float(win, step + 1))
-
+    # ==================== 弹幕 ====================
     def show_danmu(self):
         s = self.state
         pool = []
@@ -803,6 +799,7 @@ class DesktopPet:
             self.danmu_win.wm_attributes("-alpha", max(0.2, 0.8-(step-20)*0.03))
         self.root.after(100, lambda: self.animate_danmu(x, y, step+1))
 
+    # ==================== 陪伴循环 ====================
     def companion_loop(self):
         s = self.state
         now = time.time()
@@ -835,9 +832,7 @@ class DesktopPet:
             s.danmu_interval = random.randint(120, 300)
         self.check_daytime_greeting(now)
 
-        # 随机事件检查
         self.event_scheduler.update(self.pet_win)
-
         self.root.after(1000, self.companion_loop)
 
     def check_daytime_greeting(self, now):
@@ -862,6 +857,7 @@ class DesktopPet:
             self.show_toast("😟 还不休息吗？", 3000)
             s._greeted_night = True
 
+    # ==================== 基础操作 ====================
     def sleep(self):
         self.state.sleep(40)
         self.state.save()
@@ -884,11 +880,11 @@ class DesktopPet:
             return
         self.status_win = StatusWindow(self.pet_win, self.state)
         self.status_win.win.geometry(f"+{self.x+self.pet_w+10}+{self.y}")
-        
+
         def on_close():
             self.status_win.win.destroy()
             self.status_win = None
-        
+
         self.status_win.win.protocol("WM_DELETE_WINDOW", on_close)
 
     def toggle_focus(self):
@@ -969,6 +965,7 @@ class DesktopPet:
 
     def run(self):
         self.root.mainloop()
+
 
 if __name__ == "__main__":
     if not check_single_instance():
