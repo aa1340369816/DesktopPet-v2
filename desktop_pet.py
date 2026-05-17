@@ -6,7 +6,7 @@ import sys
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor
-from PIL import Image, ImageTk, ImageDraw
+from PIL import Image, ImageTk, ImageDraw, ImageFilter
 import pystray
 import ctypes
 import imageio
@@ -191,16 +191,31 @@ class DesktopPet:
                 # 距离紫色
                 diff = arr[:,:,:3].astype(np.float32) - np.array([ref_r, ref_g, ref_b], dtype=np.float32)
                 dist_purple = np.sqrt(np.sum(diff**2, axis=2))
-                # 饱和度 = max(r,g,b) - min(r,g,b)
+                # 饱和度
                 max_rgb = np.max(arr[:,:,:3], axis=2)
                 min_rgb = np.min(arr[:,:,:3], axis=2)
                 saturation = max_rgb - min_rgb
-                # 舌头保护区：R高 且 B低（#db5e61 = R219, G94, B97）
+                # 舌头保护
                 is_tongue = (arr[:,:,0] > 180) & (arr[:,:,2] < 140)
-                # 紫色区域：距离小 + 不透明 + 饱和度高（排除灰色） + 不是舌头
-                is_purple = (dist_purple < max_dist) & (arr[:,:,3] > 200) & (saturation > 25)
-                mask = is_purple & (~is_tongue)
+                # 紫色背景 mask
+                is_bg = (dist_purple < max_dist) & (arr[:,:,3] > 200) & (saturation > 25)
+                mask = is_bg & (~is_tongue)
                 arr[mask] = bg_color
+                
+                # === Alpha 羽化：消除边缘白边 ===
+                # 提取 alpha 通道
+                alpha = arr[:,:,3].copy()
+                # 角色区域（非背景）
+                char_mask = ~mask
+                # 用 PIL 对 alpha 做一次小半径高斯模糊
+                alpha_img = Image.fromarray(alpha, mode='L')
+                alpha_blurred = alpha_img.filter(ImageFilter.GaussianBlur(radius=1.5))
+                alpha_blurred = np.array(alpha_blurred)
+                # 只在角色区域应用模糊后的 alpha（背景保持 255）
+                alpha_new = np.where(char_mask, alpha_blurred, 255)
+                arr[:,:,3] = alpha_new
+                
+                # 缩放并居中放置到画布
                 img = Image.fromarray(arr)
                 img.thumbnail((target_w, target_h), Image.LANCZOS)
                 canvas = Image.new("RGBA", (target_w, target_h), bg_color)
