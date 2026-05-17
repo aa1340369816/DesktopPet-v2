@@ -1565,14 +1565,19 @@ class EventScheduler:
             self._apply_effects(effects)
             # 浮动飘字
             effect_list = self._format_effects(effects)
-            effect_str = "  ".join(effect_list) if effect_list else ""
             if self.float_callback and effect_list:
                 self.float_callback(effect_list)
-            # toast
-            msg = event.get("toast", event["description"])
+            # 头顶弹窗：显示 name + description + 效果
+            effect_str = "  ".join(effect_list) if effect_list else ""
+            display_text = event.get("description", "")
             if effect_str:
-                msg += "\n✨ " + effect_str
-            self.toast(msg, 4000)
+                display_text += "\n\n✨ " + effect_str
+            # 弹出较短的自动消失窗口（保留 toast 作为快速提示）
+            self.narrative_callback(display_text, event.get("name", ""))
+            # 同时保留底部 toast（可去掉如果你觉得多余）
+            toast_msg = event.get("toast", "")
+            if toast_msg:
+                self.toast(toast_msg, 3000)
 
         elif etype == "narrative":
             effects = event.get("effects", {})
