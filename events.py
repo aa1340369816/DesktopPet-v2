@@ -5,75 +5,75 @@ from event_pool import EVENT_POOL
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
-    """用于显示二选一事件的小窗口（会跟随宠物移动）"""
+    """极简二选一窗口：白底黑字、细线分隔、按钮带边框"""
     def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
         self.parent = parent
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
-        self.win.configure(bg="#2E2E2E")
-        self.win.attributes("-alpha", 0.95)
-        
-        # 窗口尺寸
+        self.win.configure(bg="#FFFFFF")
+        self.win.attributes("-alpha", 1.0)
+
         self.w = 360
         self.h = 220
-        
+
         # 事件标题
         name_label = tk.Label(self.win, text=event.get("name", ""),
-                              font=("微软雅黑", 11, "bold"), fg="#FFD700", bg="#2E2E2E")
-        name_label.pack(pady=(15, 5))
-        
-        # 事件描述
+                              font=("Segoe UI", 14, "bold"), fg="#000000", bg="#FFFFFF")
+        name_label.pack(pady=(24, 0))
+
+        # 分隔线
+        sep = tk.Frame(self.win, height=1, bg="#E5E5E5")
+        sep.pack(fill="x", padx=24, pady=(16, 0))
+
+        # 描述
         desc_label = tk.Label(self.win, text=event["description"],
-                              font=("微软雅黑", 10), fg="white", bg="#2E2E2E",
+                              font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF",
                               wraplength=320, justify="left")
-        desc_label.pack(pady=(0, 10), padx=20)
-        
+        desc_label.pack(pady=(24, 0), padx=24)
+
         # 按钮框架
-        btn_frame = tk.Frame(self.win, bg="#2E2E2E")
-        btn_frame.pack(pady=5)
-        
+        btn_frame = tk.Frame(self.win, bg="#FFFFFF")
+        btn_frame.pack(pady=24)
+
         def make_choice(choice_idx):
             self.win.destroy()
             choice = event["choices"][choice_idx]
             on_choose(choice)
-        
+
         for i, choice in enumerate(event["choices"]):
             btn_text = choice["text"]
             if len(btn_text) > 18:
                 btn_text = btn_text[:17] + "…"
-            
+
             btn = tk.Button(btn_frame, text=btn_text,
-                            font=("微软雅黑", 9), fg="white",
-                            bg="#555555" if i == 0 else "#444444",
-                            activebackground="#777777",
-                            width=18, height=2,
+                            font=("Segoe UI", 12), fg="#000000", bg="#FFFFFF",
+                            activebackground="#F5F5F5",
+                            bd=1, relief="solid",
+                            width=16, height=2,
                             wraplength=140,
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(side=tk.LEFT, padx=12)
-        
-        # 底部提示
+            btn.pack(side=tk.LEFT, padx=8)
+
+        # 底部提示（辅助文字）
         tip_label = tk.Label(self.win, text="请选择一个选项",
-                             font=("微软雅黑", 8), fg="#999999", bg="#2E2E2E")
-        tip_label.pack(pady=(10, 5))
-        
-        # ---- 新加：跟随宠物移动 ----
+                             font=("Segoe UI", 10), fg="#808080", bg="#FFFFFF")
+        tip_label.pack(pady=(0, 16))
+
+        # 跟随宠物移动
         self._update_position(pet_x, pet_y, pet_w, pet_h)
         self._follow()
-    
+
     def _update_position(self, pet_x, pet_y, pet_w, pet_h):
-        """根据宠物坐标刷新窗口位置"""
         x = pet_x + (pet_w - self.w) // 2
-        y = pet_y - self.h - 10
+        y = pet_y - self.h - 16
         if y < 0:
-            y = pet_y + pet_h + 10
+            y = pet_y + pet_h + 16
         self.win.geometry(f"{self.w}x{self.h}+{x}+{y}")
-    
+
     def _follow(self):
-        """循环让窗口跟随宠物移动"""
         if not self.win.winfo_exists():
             return
-        # 读取父窗口的实时位置
         pet_x = self.parent.winfo_rootx()
         pet_y = self.parent.winfo_rooty()
         pet_w = self.parent.winfo_width()
