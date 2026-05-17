@@ -543,6 +543,10 @@ class DesktopPet:
             return
         if price > 0:
             s.gold -= price
+
+        # 通知调度器当前活动
+        self.event_scheduler.set_action(name)
+
         def on_finish():
             effect_func(s)
             if game_hours > 0:
@@ -550,11 +554,15 @@ class DesktopPet:
             self.show_toast(f"✅ {name}完成")
             s.save()
             self.refresh_status()
+            self.event_scheduler.set_action(None)   # 活动结束，清除
+
         def on_cancel():
             if price > 0:
                 s.gold += price
             self.show_toast(f"❌ {name}已取消")
             s.save()
+            self.event_scheduler.set_action(None)   # 取消也清除
+
         self.current_activity = ActivityWindow(self.pet_win, f"{name}中...", duration, on_finish, on_cancel,
                                                pet_x=self.x, pet_y=self.y, pet_w=self.pet_w, pet_h=self.pet_h)
 
@@ -563,6 +571,7 @@ class DesktopPet:
         if not ok:
             self.show_info(msg)
             return
+        self.event_scheduler.set_action(f"训练-{type_}")
         self.performance_win = PerformanceWindow(self.pet_win, self.state, "train", type_,
                                                  callback=self.on_activity_end, pet_x=self.x, pet_y=self.y,
                                                  pet_w=self.pet_w, pet_h=self.pet_h)
@@ -572,6 +581,7 @@ class DesktopPet:
         if not ok:
             self.show_info(msg)
             return
+        self.event_scheduler.set_action("接通告")
         self.performance_win = PerformanceWindow(self.pet_win, self.state, "schedule", "",
                                                  callback=self.on_activity_end, pet_x=self.x, pet_y=self.y,
                                                  pet_w=self.pet_w, pet_h=self.pet_h)
@@ -582,6 +592,7 @@ class DesktopPet:
             self.show_info(msg)
         self.state.save()
         self.refresh_status()
+        self.event_scheduler.set_action(None)
 
     def show_info(self, msg):
         self.pet_win.update_idletasks()
