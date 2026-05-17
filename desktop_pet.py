@@ -734,7 +734,8 @@ class DesktopPet:
             self.event_scheduler.set_action(None)
 
         self.current_activity = ActivityWindow(self.pet_win, f"{name}中...", duration, on_finish, on_cancel,
-                                               pet_x=self.x, pet_y=self.y, pet_w=self.pet_w, pet_h=self.pet_h)
+                                               pet_x=self.x, pet_y=self.y, pet_w=self.pet_w, pet_h=self.pet_h,
+                                               visible=False)
 
     def start_train(self, type_):
         ok, msg = self.state.train(type_)
@@ -918,6 +919,7 @@ class DesktopPet:
     def show_tray_status(self, *args):
         """双击托盘图标时展示的状态面板（属性 + 活动进度）"""
         win = tk.Toplevel(self.pet_win)
+        win.withdraw()                                    # 防止闪烁
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
         win.configure(bg="#FFFFFF")
@@ -955,7 +957,7 @@ class DesktopPet:
         progress_text = ""
 
         if self.current_activity and hasattr(self.current_activity, 'get_progress'):
-            activity_name = self.current_activity.win.title() if hasattr(self.current_activity.win, 'title') else "活动中"
+            activity_name = getattr(self.current_activity, 'title', '活动中')
             progress_pct, progress_text = self.current_activity.get_progress()
         elif self.performance_win and hasattr(self.performance_win, 'get_progress'):
             activity_name = "训练/通告中"
@@ -985,25 +987,56 @@ class DesktopPet:
                         command=win.destroy)
         btn.pack(pady=(pad, pad))
 
-        # 自适应高度，放置在宠物附近
+        # ---- 定位：紧贴任务栏 ----
         win.update_idletasks()
         h = win.winfo_reqheight()
-        x = self.x + (self.pet_w - w) // 2
-        y = self.y + self.pet_h + 16
-        if y + h > self.pet_win.winfo_screenheight():
-            y = self.y - h - 16
-        win.geometry(f"{w}x{h}+{x}+{y}")
 
-        # 跟随宠物移动（如果窗口还在）
-        def follow():
-            if win.winfo_exists():
-                nx = self.x + (self.pet_w - w) // 2
-                ny = self.y + self.pet_h + 16
-                if ny + h > self.pet_win.winfo_screenheight():
-                    ny = self.y - h - 16
-                win.geometry(f"+{nx}+{ny}")
-                win.after(200, follow)
-        follow()
+        # 获取任务栏位置
+        from ctypes import c_int, c_uint, c_long, c_void_p
+        import ctypes as ctypes_mod
+        import ctypes.wintypes
+
+        class APPBARDATA(ctypes_mod.Structure):
+            _fields_ = [
+                ("cbSize", c_uint),
+                ("hWnd", ctypes_mod.c_void_p),
+                ("uCallbackMessage", c_uint),
+                ("uEdge", c_uint),
+                ("rc", ctypes_mod.wintypes.RECT),
+                ("lParam", ctypes_mod.c_long),
+            ]
+        abd = APPBARDATA()
+        abd.cbSize = ctypes_mod.sizeof(APPBARDATA)
+        ctypes_mod.windll.shell32.SHAppBarMessage(4, ctypes_mod.byref(abd))  # ABM_GETSTATE
+        ctypes_mod.windll.shell32.SHAppBarMessage(5, ctypes_mod.byref(abd))  # ABM_GETTASKBARPOS
+
+        taskbar_left = abd.rc.left
+        taskbar_top = abd.rc.top
+        taskbar_right = abd.rc.right
+        taskbar_bottom = abd.rc.bottom
+
+        screen_w = self.pet_win.winfo_screenwidth()
+        screen_h = self.pet_win.winfo_screenheight()
+
+        if taskbar_top > screen_h // 2:
+            # 任务栏在底部
+            x = taskbar_right - w - 16
+            y = taskbar_top - h - 8
+        elif taskbar_left > screen_w // 2:
+            # 任务栏在右侧
+            x = taskbar_left - w - 8
+            y = taskbar_bottom - h - 16
+        elif taskbar_bottom < screen_h // 2:
+            # 任务栏在顶部
+            x = taskbar_right - w - 16
+            y = taskbar_bottom + 8
+        else:
+            # 任务栏在左侧
+            x = taskbar_right + 8
+            y = taskbar_bottom - h - 16
+
+        win.geometry(f"{w}x{h}+{x}+{y}")
+        win.deiconify()   # 显示
     
     def toggle_focus(self):
         s = self.state
