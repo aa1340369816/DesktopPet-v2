@@ -5,7 +5,7 @@ from event_pool import EVENT_POOL
 
 # ==================== 选择窗口 ====================
 class ChoiceWindow:
-    """极简二选一窗口：白底黑字、自适应高度、文字不截断"""
+    """极简二选一窗口：缩小字体、加厚按钮、文字不截断"""
     def __init__(self, parent, event, on_choose, pet_x, pet_y, pet_w, pet_h):
         self.parent = parent
         self.win = tk.Toplevel(parent)
@@ -14,28 +14,27 @@ class ChoiceWindow:
         self.win.configure(bg="#FFFFFF")
         self.win.attributes("-alpha", 1.0)
 
-        self.w = 380  # 稍微加宽一点，给文字更多空间
+        self.w = 340
 
-        # ---- 构建内容 ----
-        # 标题
+        # 标题（减小字号：12pt bold）
         title_text = event.get("name", "")
         title_label = tk.Label(self.win, text=title_text,
-                               font=("Segoe UI", 14, "bold"), fg="#000000", bg="#FFFFFF")
-        title_label.pack(pady=(24, 0))
+                               font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF")
+        title_label.pack(pady=(20, 0))
 
         # 分隔线
         sep = tk.Frame(self.win, height=1, bg="#E5E5E5")
-        sep.pack(fill="x", padx=24, pady=(16, 0))
+        sep.pack(fill="x", padx=20, pady=(12, 0))
 
-        # 描述
+        # 描述（缩小字体：10pt）
         desc_label = tk.Label(self.win, text=event["description"],
-                              font=("Segoe UI", 12), fg="#404040", bg="#FFFFFF",
-                              wraplength=320, justify="left")
-        desc_label.pack(pady=(24, 0), padx=24)
+                              font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
+                              wraplength=280, justify="left")
+        desc_label.pack(pady=(16, 0), padx=20)
 
         # 按钮框架
         btn_frame = tk.Frame(self.win, bg="#FFFFFF")
-        btn_frame.pack(pady=24)
+        btn_frame.pack(pady=16)
 
         def make_choice(choice_idx):
             self.win.destroy()
@@ -43,47 +42,46 @@ class ChoiceWindow:
 
         for i, choice in enumerate(event["choices"]):
             btn_text = choice["text"]
-            # 仅保留极端情况的截断（超过 22 字截断），正常文字完整显示
-            if len(btn_text) > 22:
-                btn_text = btn_text[:21] + "…"
+            # 只在极端情况截断（超过24字），正常全部显示
+            if len(btn_text) > 24:
+                btn_text = btn_text[:23] + "…"
 
             btn = tk.Button(btn_frame, text=btn_text,
-                            font=("Segoe UI", 12), fg="#000000", bg="#FFFFFF",
+                            font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF",
                             activebackground="#F5F5F5",
                             bd=1, relief="solid",
-                            width=16, height=2,          # 保持按钮大小一致
-                            wraplength=180,               # 放宽换行宽度
+                            width=14,                 # 按钮宽度（字符）
+                            height=1,                 # 按钮高度（行），用 ipady 加厚
+                            wraplength=200,           # 按钮内换行宽度
                             justify="center",
+                            padx=8, pady=6,           # 内边距加大，让按钮更厚
                             command=lambda idx=i: make_choice(idx))
-            btn.pack(side=tk.LEFT, padx=8, pady=4)      # 增加内边距
+            btn.pack(side=tk.LEFT, padx=6, pady=4)
 
-        # 底部提示
+        # 底部提示（9pt）
         tip_label = tk.Label(self.win, text="请选择一个选项",
-                             font=("Segoe UI", 10), fg="#808080", bg="#FFFFFF")
-        tip_label.pack(pady=(0, 16))
+                             font=("Segoe UI", 9), fg="#808080", bg="#FFFFFF")
+        tip_label.pack(pady=(0, 12))
 
-        # ---- 自适应高度计算 ----
+        # 自适应高度
         self.win.update_idletasks()
         req_height = self.win.winfo_reqheight()
-        # 给一个合理范围
-        if req_height < 200:
-            req_height = 200
-        if req_height > 500:
-            req_height = 500
+        if req_height < 180:
+            req_height = 180
+        if req_height > 420:
+            req_height = 420
         self.h = req_height
 
-        # 初始位置
         self._update_position(pet_x, pet_y, pet_w, pet_h)
         self.win.geometry(f"{self.w}x{self.h}+{self.x}+{self.y}")
 
-        # 跟随宠物移动
         self._follow()
 
     def _update_position(self, pet_x, pet_y, pet_w, pet_h):
         self.x = pet_x + (pet_w - self.w) // 2
-        self.y = pet_y - self.h - 16
+        self.y = pet_y - self.h - 12
         if self.y < 0:
-            self.y = pet_y + pet_h + 16
+            self.y = pet_y + pet_h + 12
 
     def _follow(self):
         if not self.win.winfo_exists():
