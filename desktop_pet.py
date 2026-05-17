@@ -88,6 +88,8 @@ class DesktopPet:
         threading.Thread(target=self.tray.run, daemon=True).start()
 
         self.drag_data = {"x": 0, "y": 0}
+        self.follow_windows = []   # 每个元素是 (win, update_func)
+
 
         self.event_scheduler = EventScheduler(
             self.state,
@@ -342,6 +344,17 @@ class DesktopPet:
         self.drag_data["x"] = event.x
         self.drag_data["y"] = event.y
 
+    def register_follow_window(self, win, update_func):
+        """注册一个跟随宠物移动的窗口"""
+        for w, _ in self.follow_windows:
+            if w is win:
+                return
+        self.follow_windows.append((win, update_func))
+
+    def unregister_follow_window(self, win):
+        """取消注册"""
+        self.follow_windows = [(w, f) for w, f in self.follow_windows if w != win]
+
     def on_drag(self, event):
         dx = event.x - self.drag_data["x"]
         dy = event.y - self.drag_data["y"]
@@ -355,6 +368,13 @@ class DesktopPet:
             self.current_activity.pos_y = self.y + self.pet_h + 10
             self.current_activity.win.geometry(f"+{self.current_activity.pos_x}+{self.current_activity.pos_y}")
         self.move_notifications()
+
+        # 实时更新所有跟随窗口
+        for win, update_func in self.follow_windows[:]:
+            if win.winfo_exists():
+                update_func()
+            else:
+                self.follow_windows.remove((win, update_func))
 
     def auto_save_loop(self):
         self.state.save()
