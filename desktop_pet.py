@@ -419,7 +419,6 @@ class DesktopPet:
         zoom_menu = tk.Menu(menu, tearoff=0)
         zoom_menu.add_command(label="小 (1.5x)", command=lambda: self.set_scale(1.5))
         zoom_menu.add_command(label="中 (2.0x)", command=lambda: self.set_scale(2.0))
-        zoom_menu.add_command(label="大 (2.5x)", command=lambda: self.set_scale(2.5))
         zoom_menu.add_separator()
         zoom_menu.add_command(label="自定义倍数...", command=self.custom_scale)
         menu.add_cascade(label="🔲 缩放", menu=zoom_menu)
