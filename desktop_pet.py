@@ -85,7 +85,8 @@ class DesktopPet:
             self.show_toast,
             self.show_info,
             self.show_float_text,
-            self.show_narrative_window   # 新增
+            self.show_narrative_window,
+            self.refresh_status          # 新增
         )
 
     # ---------- 后台缓存生成 ----------
