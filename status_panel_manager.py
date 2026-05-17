@@ -137,7 +137,6 @@ class StatusPanelManager:
         win.protocol("WM_DELETE_WINDOW", hide)
 
     def show_status(self):
-        """打开状态窗口（智能定位 + 跟随移动）"""
         if self.pet.status_win and self.pet.status_win.win.winfo_exists():
             self.pet.status_win.win.lift()
             return
@@ -158,13 +157,11 @@ class StatusPanelManager:
             screen_w = self.pet.pet_win.winfo_screenwidth()
             screen_h = self.pet.pet_win.winfo_screenheight()
 
-            # 水平方向：默认在宠物右侧，空间不够则放左侧
             if pet_x + pet_w + win_w + 10 <= screen_w:
                 x = pet_x + pet_w + 10
             else:
                 x = pet_x - win_w - 10
 
-            # 垂直方向：居中于宠物，但不超出屏幕
             y = pet_y + (pet_h - win_h) // 2
             if y < 0:
                 y = 0
@@ -172,11 +169,12 @@ class StatusPanelManager:
                 y = screen_h - win_h
 
             win.geometry(f"+{x}+{y}")
-            win.after(200, update_position)
 
         update_position()
+        self.pet.register_follow_window(win, update_position)
 
         def on_close():
+            self.pet.unregister_follow_window(win)
             self.pet.status_win.win.destroy()
             self.pet.status_win = None
 
