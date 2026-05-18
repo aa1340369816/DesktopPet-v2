@@ -30,7 +30,6 @@ class StatusPanelManager:
             win.lift()
             return
 
-        # 获取任务栏位置
         class APPBARDATA(ct.Structure):
             _fields_ = [
                 ("cbSize", ct.c_uint),
@@ -100,6 +99,16 @@ class StatusPanelManager:
             bar.create_rectangle(0, 0, 240 * progress_pct / 100, 3, fill="#000000", outline="")
             tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack()
+
+            # 中止按钮
+            def cancel_activity():
+                self.pet.action_manager.cancel_current_activity()
+                hide()
+            cancel_btn = tk.Button(win, text="中止活动", font=("Segoe UI", 10),
+                                   fg="#FF0000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                   bd=1, relief="solid", padx=12, pady=4,
+                                   command=cancel_activity)
+            cancel_btn.pack(pady=(4, 0))
         else:
             tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
@@ -136,16 +145,10 @@ class StatusPanelManager:
         win.deiconify()
         win.protocol("WM_DELETE_WINDOW", hide)
 
-    def show_status(self):
-        if self.pet.status_win and self.pet.status_win.win.winfo_exists():
-            self.pet.status_win.win.lift()
-            return
-
-        self.pet.status_win = StatusWindow(self.pet.pet_win, self.pet.state)
-        win = self.pet.status_win.win
-        win.update_idletasks()
-        win_w = win.winfo_reqwidth()
-        win_h = win.winfo_reqheight()
+    def refresh_tray_status_if_open(self):
+        """如果托盘状态窗口正在显示，则刷新内容"""
+        if self.tray_status_win and self.tray_status_win.winfo_ismapped():
+            self.show_tray_status()
 
     def show_status(self):
         if self.pet.status_win and self.pet.status_win.win.winfo_exists():
