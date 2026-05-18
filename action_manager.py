@@ -40,6 +40,7 @@ class ActionManager:
                 state.gain_exp(5)
                 self.pet.anim_manager.switch_to_idle()
         elif job == "咖啡店打工":
+            self.pet.anim_manager.play_action_animation("咖啡店打工")   # 咖啡店动画
             duration = 3600
             def effect(state):
                 state.gold += 15
@@ -49,6 +50,7 @@ class ActionManager:
                 state.hygiene = max(0, state.hygiene - 5)
                 state.mood = max(0, state.mood - 2)
                 state.gain_exp(5)
+                self.pet.anim_manager.switch_to_idle()
         elif job == "快递分拣":
             duration = 5400
             def effect(state):
@@ -176,7 +178,14 @@ class ActionManager:
         if self.pet.state.inventory[name] == 0:
             del self.pet.state.inventory[name]
         self.pet.ui_manager.show_toast(f"使用 {name}")
+        # 播放对应动画（如果存在）
+        self.pet.anim_manager.play_action_animation(name)
         self.start_activity(name, 0, duration, effect_func)
+
+    def start_clean_action(self, name, price, duration, effect_func):
+        """清洁活动专用，会播放动画"""
+        self.pet.anim_manager.play_action_animation(name)
+        self.start_activity(name, price, duration, effect_func)
 
     def start_activity(self, name, price, duration, effect_func):
         if self.pet.current_activity or self.pet.performance_win:
@@ -193,7 +202,7 @@ class ActionManager:
             s.gold -= price
 
         self.pet.event_scheduler.set_action(name)
-        self.pet.current_activity_name = name           # 设置活动名称
+        self.pet.current_activity_name = name
 
         def on_finish():
             effect_func(s)
@@ -233,7 +242,7 @@ class ActionManager:
             self.pet.ui_manager.show_info(msg)
             return
         self.pet.event_scheduler.set_action(f"训练-{type_}")
-        self.pet.current_activity_name = f"训练-{type_}"  # 设置名称
+        self.pet.current_activity_name = f"训练-{type_}"
 
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "train", type_,
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
@@ -253,7 +262,7 @@ class ActionManager:
             self.pet.ui_manager.show_info(msg)
             return
         self.pet.event_scheduler.set_action("接通告")
-        self.pet.current_activity_name = "接通告"       # 设置名称
+        self.pet.current_activity_name = "接通告"
 
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "schedule", "",
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
