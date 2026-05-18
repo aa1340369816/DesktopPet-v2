@@ -248,6 +248,7 @@ class DesktopPet:
 
         menu.add_command(label="🛒 商店", command=self.status_panel_manager.open_shop)
         menu.add_command(label="💊 治疗", command=self.cure)
+        menu.add_command(label="⏹️ 中止活动", command=self.action_manager.cancel_current_activity)
         menu.add_separator()
 
         zoom_menu = tk.Menu(menu, tearoff=0)
