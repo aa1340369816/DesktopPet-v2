@@ -10,7 +10,6 @@ class ShopWindow:
         self.pet_state = pet_state
         self.buy_callback = buy_callback
 
-        # 顶栏
         header = tk.Frame(self.win, bg="#FFFFFF")
         header.pack(fill="x", padx=24, pady=(24,0))
         tk.Label(header, text="练习生百货", font=("Segoe UI", 14, "bold"),
@@ -29,16 +28,27 @@ class ShopWindow:
             self.build_category(frame, i)
 
     def build_category(self, parent, cat_idx):
-        canvas = tk.Canvas(parent, width=440, height=460, bg="#FFFFFF", highlightthickness=0)
-        scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+        # 外层容器使用 Frame 来管理 Canvas 和 Scrollbar
+        outer = tk.Frame(parent, bg="#FFFFFF")
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        canvas = tk.Canvas(outer, bg="#FFFFFF", highlightthickness=0)
+        scrollbar = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
         scroll_frame = tk.Frame(canvas, bg="#FFFFFF")
-        scroll_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0,0), window=scroll_frame, anchor="nw")
+
+        # 关键：让 scroll_frame 自动扩展宽度，并更新滚动区域
+        scroll_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
+
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
         items = self.get_items(cat_idx)
-        # 直接铺开，不再分子组
         for i, (display_name, price, eff, desc) in enumerate(items):
             card = tk.Frame(scroll_frame, bg="#FFFFFF", bd=1, relief="solid",
                             highlightbackground="#E5E5E5", highlightthickness=1)
@@ -98,8 +108,7 @@ class ShopWindow:
                   bd=1, relief="solid", activebackground="#F5F5F5", command=top.destroy).pack(pady=8)
 
     def get_items(self, idx):
-        # 数据与原版完全一致，这里只展示结构，内容保持不变
-        # 你原有的 items 列表直接保留
+        # 数据保持不变，你原有物品列表完整复制到各个分类
         if idx == 0:
             return [
                 ("🥑 超级食物碗", 12, "🍖+30 ⚡+5 20s", "羽衣甘蓝打底，奇亚籽点缀。"),
