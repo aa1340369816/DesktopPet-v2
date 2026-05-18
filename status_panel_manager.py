@@ -26,10 +26,8 @@ class StatusPanelManager:
             self._create_tray_status_win()
 
         win = self.tray_status_win
-        # 如果窗口已经显示，只提到最前；但因为是手动打开，也刷新内容
-        # 不再直接 return，而是强制重建内容
+        # 不再提前返回，强制重建内容
 
-        # 获取任务栏位置
         class APPBARDATA(ct.Structure):
             _fields_ = [
                 ("cbSize", ct.c_uint),
@@ -79,15 +77,12 @@ class StatusPanelManager:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
-        # ---------- 重新检测活动 ----------
         # ---------- 活动检测 (优先使用显式名称) ----------
-        activity_name = self.pet.current_activity_name   # 直接取字符串
+        activity_name = self.pet.current_activity_name
         progress_pct = 0
         progress_text = ""
 
-        # 如果名称存在，再尝试获取详细进度
         if activity_name:
-            # 尝试从活动对象获取进度
             if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
                 pct, txt = self.pet.current_activity.get_progress()
                 progress_pct, progress_text = pct, txt
@@ -95,7 +90,6 @@ class StatusPanelManager:
                 pct, txt = self.pet.performance_win.get_progress()
                 progress_pct, progress_text = pct, txt
         else:
-            # 名称不存在，才回退到旧逻辑
             if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
                 activity_name = self.pet.current_activity.title if hasattr(self.pet.current_activity, 'title') else "活动中"
                 progress_pct, progress_text = self.pet.current_activity.get_progress()
@@ -113,7 +107,6 @@ class StatusPanelManager:
             tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack()
 
-            # 中止按钮
             def cancel_activity():
                 self.pet.action_manager.cancel_current_activity()
                 hide()
