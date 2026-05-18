@@ -14,6 +14,10 @@ class ActionManager:
             duration = 3600
             def effect(state):
                 state.gold += 20
+                state.satiety = max(0, state.satiety - 8)
+                state.stamina = max(0, state.stamina - 20)
+                state.hygiene = max(0, state.hygiene - 5)
+                state.mood = max(0, state.mood - 3)
                 state.gain_exp(5)
                 self.pet.anim_manager.switch_to_idle()
         elif job == "咖啡店打工":
@@ -21,12 +25,19 @@ class ActionManager:
             def effect(state):
                 state.gold += 15
                 state.charm += 3
+                state.satiety = max(0, state.satiety - 6)
+                state.stamina = max(0, state.stamina - 15)
+                state.hygiene = max(0, state.hygiene - 5)
+                state.mood = max(0, state.mood - 2)
                 state.gain_exp(5)
         elif job == "快递分拣":
             duration = 5400
             def effect(state):
                 state.gold += 30
-                state.stamina = max(0, state.stamina - 15)
+                state.stamina = max(0, state.stamina - 30)
+                state.satiety = max(0, state.satiety - 12)
+                state.hygiene = max(0, state.hygiene - 10)
+                state.mood = max(0, state.mood - 5)
                 state.gain_exp(5)
         else:
             return
@@ -42,6 +53,8 @@ class ActionManager:
             cost = 30
             gain = 8
             duration = 3600
+
+        # 确定才艺属性
         if "声乐" in course:
             attr = "vocal"
         elif "舞蹈" in course:
@@ -51,9 +64,48 @@ class ActionManager:
         else:
             attr = None
 
+        # 活动消耗（根据课程名设置）
         def effect(state):
             if attr:
                 setattr(state, attr, getattr(state, attr) + gain)
+            # 消耗量
+            if "进阶" in course:
+                if "声乐" in course:
+                    state.satiety = max(0, state.satiety - 12)
+                    state.stamina = max(0, state.stamina - 22)
+                    state.hygiene = max(0, state.hygiene - 8)
+                    state.mood = max(0, state.mood - 3)
+                elif "舞蹈" in course:
+                    state.satiety = max(0, state.satiety - 14)
+                    state.stamina = max(0, state.stamina - 28)
+                    state.hygiene = max(0, state.hygiene - 12)
+                    state.mood = max(0, state.mood - 4)
+                else:
+                    # 进阶表演班（没有表格，先按普通处理）
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+            else:
+                if "声乐" in course:
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+                elif "舞蹈" in course:
+                    state.satiety = max(0, state.satiety - 10)
+                    state.stamina = max(0, state.stamina - 20)
+                    state.hygiene = max(0, state.hygiene - 10)
+                    state.mood = max(0, state.mood - 3)
+                elif "表演" in course:
+                    # 普通表演兴趣班，表格没有，给个默认
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+                else:
+                    pass
+
             state.gain_exp(10)
 
         self.start_activity(course, cost, duration, effect)
@@ -69,6 +121,10 @@ class ActionManager:
             else:
                 state.dance += gain
             state.charm += 5
+            state.satiety = max(0, state.satiety - 6)
+            state.stamina = max(0, state.stamina - 18)
+            state.hygiene = max(0, state.hygiene - 5)
+            state.mood = min(100, state.mood + 3)   # 心情+3，注意上限
             state.gain_exp(5)
 
         self.start_activity("街头表演", 0, 3600, effect)
