@@ -98,7 +98,7 @@ class EventScheduler:
         if hasattr(pet_state, 'event_cooldowns'):
             self.cooldowns = pet_state.event_cooldowns
 
-        self.next_check_time = time.time() + 5
+        self.next_check_time = time.time() + 300
         self.current_choice_win = None
         self.current_action = None
 
@@ -113,10 +113,10 @@ class EventScheduler:
         if now < self.next_check_time:
             return
 
-        self.next_check_time = now + 10
+        self.next_check_time = now + random.randint(300, 1800)
 
-        # if random.random() > 0.5:
-        #     return
+        if random.random() > 0.5:
+            return
 
         available = []
         for event in EVENT_POOL:
