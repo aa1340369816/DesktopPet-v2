@@ -171,7 +171,7 @@ class ActionManager:
         s.save()
 
     def use_inventory_item(self, name, duration, effect_func):
-        if self.pet.state.inventory.get(name,0) <= 0:
+        if self.pet.state.inventory.get(name, 0) <= 0:
             self.pet.ui_manager.show_info("背包中没有该物品！")
             return
         self.pet.state.inventory[name] -= 1
@@ -179,14 +179,14 @@ class ActionManager:
             del self.pet.state.inventory[name]
         self.pet.ui_manager.show_toast(f"使用 {name}")
         self.pet.anim_manager.play_action_animation(name)
-        self.start_activity(name, 0, duration, effect_func)
+        self.start_activity(name, 0, duration, effect_func, refund_item=name)
 
     def start_clean_action(self, name, price, duration, effect_func):
         """清洁活动专用，会播放动画"""
         self.pet.anim_manager.play_action_animation(name)
         self.start_activity(name, price, duration, effect_func)
 
-    def start_activity(self, name, price, duration, effect_func):
+    def start_activity(self, name, price, duration, effect_func, refund_item=None):
         # 冲突检测
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始新活动？"):
@@ -206,7 +206,7 @@ class ActionManager:
 
         def on_finish():
             effect_func(s)
-            self.pet.anim_manager.switch_to_idle()   # 完成后切回待机
+            self.pet.anim_manager.switch_to_idle()
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
@@ -218,7 +218,9 @@ class ActionManager:
         def on_cancel():
             if price > 0:
                 s.gold += price
-            self.pet.anim_manager.switch_to_idle()   # 取消也切回待机
+            if refund_item:
+                s.inventory[refund_item] = s.inventory.get(refund_item, 0) + 1
+            self.pet.anim_manager.switch_to_idle()
             self.pet.ui_manager.show_toast(f"❌ {name}已取消")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
