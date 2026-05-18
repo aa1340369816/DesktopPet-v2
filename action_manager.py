@@ -40,7 +40,7 @@ class ActionManager:
                 state.gain_exp(5)
                 self.pet.anim_manager.switch_to_idle()
         elif job == "咖啡店打工":
-            self.pet.anim_manager.play_action_animation("咖啡店打工")   # 咖啡店动画
+            self.pet.anim_manager.play_action_animation("咖啡店打工")
             duration = 3600
             def effect(state):
                 state.gold += 15
@@ -178,7 +178,6 @@ class ActionManager:
         if self.pet.state.inventory[name] == 0:
             del self.pet.state.inventory[name]
         self.pet.ui_manager.show_toast(f"使用 {name}")
-        # 播放对应动画（如果存在）
         self.pet.anim_manager.play_action_animation(name)
         self.start_activity(name, 0, duration, effect_func)
 
@@ -188,6 +187,7 @@ class ActionManager:
         self.start_activity(name, price, duration, effect_func)
 
     def start_activity(self, name, price, duration, effect_func):
+        # 冲突检测
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始新活动？"):
                 return
@@ -206,7 +206,7 @@ class ActionManager:
 
         def on_finish():
             effect_func(s)
-            self.pet.anim_manager.switch_to_idle()   # ← 新增：切回待机
+            self.pet.anim_manager.switch_to_idle()   # 完成后切回待机
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
@@ -218,13 +218,19 @@ class ActionManager:
         def on_cancel():
             if price > 0:
                 s.gold += price
-            self.pet.anim_manager.switch_to_idle()   # ← 新增：取消也切回待机
+            self.pet.anim_manager.switch_to_idle()   # 取消也切回待机
             self.pet.ui_manager.show_toast(f"❌ {name}已取消")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
             s.save()
             self.pet.event_scheduler.set_action(None)
             self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+        self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
+                                                   pet_x=self.pet.x, pet_y=self.pet.y,
+                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                   visible=False)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_train(self, type_):
         if self.pet.current_activity or self.pet.performance_win:
