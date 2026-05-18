@@ -80,18 +80,28 @@ class StatusPanelManager:
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
         # ---------- 重新检测活动 ----------
-        activity_name = None
+        # ---------- 活动检测 (优先使用显式名称) ----------
+        activity_name = self.pet.current_activity_name   # 直接取字符串
         progress_pct = 0
         progress_text = ""
 
-        # 优先检测 performance_win，因为它可能是训练/通告
-        if self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
-            activity_name = "训练/通告中"
-            progress_pct, progress_text = self.pet.performance_win.get_progress()
-        elif self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
-            # 从活动窗口获取标题
-            activity_name = self.pet.current_activity.title if hasattr(self.pet.current_activity, 'title') else "活动中"
-            progress_pct, progress_text = self.pet.current_activity.get_progress()
+        # 如果名称存在，再尝试获取详细进度
+        if activity_name:
+            # 尝试从活动对象获取进度
+            if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
+                pct, txt = self.pet.current_activity.get_progress()
+                progress_pct, progress_text = pct, txt
+            elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
+                pct, txt = self.pet.performance_win.get_progress()
+                progress_pct, progress_text = pct, txt
+        else:
+            # 名称不存在，才回退到旧逻辑
+            if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
+                activity_name = self.pet.current_activity.title if hasattr(self.pet.current_activity, 'title') else "活动中"
+                progress_pct, progress_text = self.pet.current_activity.get_progress()
+            elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
+                activity_name = "训练/通告中"
+                progress_pct, progress_text = self.pet.performance_win.get_progress()
 
         if activity_name:
             tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(12, 0))
