@@ -16,22 +16,48 @@ class AnimationManager:
         self.image_folder = pet.image_folder
         self.progress_win = None
 
+        # 活动 → 视频文件名（无后缀）的映射表
+        self.action_anim_map = {
+            "超级食物碗": "feed_superbowl",
+            "波奇饭便当": "feed_poke",
+            "绿色排毒果汁": "feed_juice",
+            "牛肉沙拉碗": "feed_beefsalad",
+            "冰美式": "drink_iceamericano",
+            "泡澡": "bath",
+            "快速洗脸": "face_wash",
+            "咖啡店打工": "cafe",
+        }
+
     def generate_caches_async(self):
         scales = [1.5, 2.0]
         tasks = []
         for scale in scales:
-            if not self.cache_exists(scale, "greet"):
-                tasks.append((scale, "greet"))
-            if not self.cache_exists(scale, "idle"):
-                tasks.append((scale, "idle"))
-            if not self.cache_exists(scale, "store"):
-                tasks.append((scale, "store"))
+            # 原有的动画
+            for base in ["greet", "idle", "store"]:
+                if not self.cache_exists(scale, base):
+                    tasks.append((scale, base))
+            # 新增的动画（从映射表中获取所有唯一 base 名）
+            for base in set(self.action_anim_map.values()):
+                if not self.cache_exists(scale, base):
+                    tasks.append((scale, base))
         if tasks:
             from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=4) as executor:
                 for scale, name in tasks:
                     executor.submit(self.ensure_cache_for_scale, scale, name)
 
+    def play_action_animation(self, action_name):
+        """根据活动名称播放对应动画（循环）"""
+        if action_name not in self.action_anim_map:
+            return
+        base = self.action_anim_map[action_name]
+        self.ensure_cache_for_scale(self.pet.state.scale, base)
+        cache_dir = os.path.join(self.base_dir, f"{base}_{self.pet.state.scale}x_frames")
+        frames = self.load_png_frames(cache_dir)
+        if frames:
+            self.play_animation(frames, loop=True)
+
+    # ---------- 以下方法保持不变 ----------
     def cache_exists(self, scale, base_name):
         cache_dir = os.path.join(self.base_dir, f"{base_name}_{scale}x_frames")
         return os.path.isdir(cache_dir) and os.listdir(cache_dir)
@@ -138,13 +164,10 @@ class AnimationManager:
         self.pet.anim_after_id = self.pet.pet_win.after(50, self._animate_frame, loop, callback)
 
     def switch_to_idle(self):
-        # 1. 彻底停掉当前动画
         if self.pet.anim_after_id:
             self.pet.pet_win.after_cancel(self.pet.anim_after_id)
             self.pet.anim_after_id = None
-        self.pet.current_anim = None   # 清空动画引用，防止 _animate_frame 继续运行
-
-        # 2. 切换到待机动画或静态图
+        self.pet.current_anim = None
         if self.pet.anim_idle_frames:
             self.play_animation(self.pet.anim_idle_frames, loop=True)
         else:
