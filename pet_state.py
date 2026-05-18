@@ -33,7 +33,7 @@ class PetState:
         self.stamina = 50
         self.hygiene = 80
         self.mood = 60
-        self.gold = 50
+        self.gold = 500000
         self.star = 0
         self.sick = False
         self.resting = False
