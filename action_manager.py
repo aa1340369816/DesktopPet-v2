@@ -9,15 +9,17 @@ class ActionManager:
         self.pet = pet
 
     def cancel_current_activity(self):
-        """中止当前所有活动，返还金币，不增加数值，同时清理引用和动画"""
+        """中止当前所有活动，返还金币，清理状态"""
         if self.pet.current_activity:
             self.pet.current_activity.cancel()
             self.pet.current_activity = None
         if self.pet.performance_win:
             self.pet.performance_win.cancel()
             self.pet.performance_win = None
-        # 强制切回待机动画
+        self.pet.current_activity_name = None
         self.pet.anim_manager.switch_to_idle()
+        self.pet.event_scheduler.set_action(None)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def do_part_time_job(self, job):
         if self.pet.current_activity or self.pet.performance_win:
@@ -26,7 +28,6 @@ class ActionManager:
             else:
                 self.cancel_current_activity()
 
-        s = self.pet.state
         if job == "便利店兼职":
             self.pet.anim_manager.play_store_animation()
             duration = 3600
@@ -63,7 +64,6 @@ class ActionManager:
 
     def buy_training(self, course):
         s = self.pet.state
-        # 确定费用
         if "进阶" in course:
             cost = 60
             gain = 15
@@ -73,16 +73,13 @@ class ActionManager:
             gain = 8
             duration = 3600
 
-        # 确认框
         if not messagebox.askyesno("确认报名", f"是否花费 {cost} 金币报名「{course}」？"):
             return
 
-        # 检查金币
         if s.gold < cost:
             self.pet.ui_manager.show_info("金币不足！")
             return
 
-        # 冲突检测（和 start_activity 里重复，但先检测也无妨）
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始培训？"):
                 return
@@ -101,7 +98,6 @@ class ActionManager:
         def effect(state):
             if attr:
                 setattr(state, attr, getattr(state, attr) + gain)
-            # 消耗
             if "进阶" in course:
                 if "声乐" in course:
                     state.satiety = max(0, state.satiety - 12)
@@ -134,8 +130,6 @@ class ActionManager:
                     state.stamina = max(0, state.stamina - 15)
                     state.hygiene = max(0, state.hygiene - 5)
                     state.mood = max(0, state.mood - 2)
-                else:
-                    pass
             state.gain_exp(10)
 
         self.start_activity(course, cost, duration, effect)
@@ -147,7 +141,6 @@ class ActionManager:
             else:
                 self.cancel_current_activity()
 
-        s = self.pet.state
         gain = random.randint(1, 5)
         is_vocal = random.random() < 0.5
 
@@ -186,7 +179,6 @@ class ActionManager:
         self.start_activity(name, 0, duration, effect_func)
 
     def start_activity(self, name, price, duration, effect_func):
-        # 冲突检测
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始新活动？"):
                 return
@@ -201,11 +193,13 @@ class ActionManager:
             s.gold -= price
 
         self.pet.event_scheduler.set_action(name)
+        self.pet.current_activity_name = name           # 设置活动名称
 
         def on_finish():
             effect_func(s)
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
-            self.pet.current_activity = None   # 新增
+            self.pet.current_activity = None
+            self.pet.current_activity_name = None
             s.save()
             self.pet.refresh_status()
             self.pet.event_scheduler.set_action(None)
@@ -215,10 +209,17 @@ class ActionManager:
             if price > 0:
                 s.gold += price
             self.pet.ui_manager.show_toast(f"❌ {name}已取消")
-            self.pet.current_activity = None   # 新增
+            self.pet.current_activity = None
+            self.pet.current_activity_name = None
             s.save()
             self.pet.event_scheduler.set_action(None)
             self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+        self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
+                                                   pet_x=self.pet.x, pet_y=self.pet.y,
+                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                   visible=False)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_train(self, type_):
         if self.pet.current_activity or self.pet.performance_win:
@@ -232,6 +233,8 @@ class ActionManager:
             self.pet.ui_manager.show_info(msg)
             return
         self.pet.event_scheduler.set_action(f"训练-{type_}")
+        self.pet.current_activity_name = f"训练-{type_}"  # 设置名称
+
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "train", type_,
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
                                                      pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
@@ -250,6 +253,8 @@ class ActionManager:
             self.pet.ui_manager.show_info(msg)
             return
         self.pet.event_scheduler.set_action("接通告")
+        self.pet.current_activity_name = "接通告"       # 设置名称
+
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "schedule", "",
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
                                                      pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
@@ -257,7 +262,8 @@ class ActionManager:
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def on_activity_end(self, msg=None):
-        self.pet.performance_win = None   # 已存在，但请确认有这一行
+        self.pet.performance_win = None
+        self.pet.current_activity_name = None
         if msg:
             self.pet.ui_manager.show_info(msg)
         self.pet.state.save()
