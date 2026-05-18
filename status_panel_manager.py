@@ -26,10 +26,10 @@ class StatusPanelManager:
             self._create_tray_status_win()
 
         win = self.tray_status_win
-        if win.winfo_ismapped():
-            win.lift()
-            return
+        # 如果窗口已经显示，只提到最前；但因为是手动打开，也刷新内容
+        # 不再直接 return，而是强制重建内容
 
+        # 获取任务栏位置
         class APPBARDATA(ct.Structure):
             _fields_ = [
                 ("cbSize", ct.c_uint),
@@ -79,16 +79,19 @@ class StatusPanelManager:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
+        # ---------- 重新检测活动 ----------
         activity_name = None
         progress_pct = 0
         progress_text = ""
 
-        if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
-            activity_name = self.pet.current_activity.title if hasattr(self.pet.current_activity, 'title') else "活动中"
-            progress_pct, progress_text = self.pet.current_activity.get_progress()
-        elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
+        # 优先检测 performance_win，因为它可能是训练/通告
+        if self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
             activity_name = "训练/通告中"
             progress_pct, progress_text = self.pet.performance_win.get_progress()
+        elif self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
+            # 从活动窗口获取标题
+            activity_name = self.pet.current_activity.title if hasattr(self.pet.current_activity, 'title') else "活动中"
+            progress_pct, progress_text = self.pet.current_activity.get_progress()
 
         if activity_name:
             tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(12, 0))
