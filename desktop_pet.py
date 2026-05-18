@@ -205,15 +205,14 @@ class DesktopPet:
 
         basic_menu = tk.Menu(menu, tearoff=0)
         basic_menu.add_command(label="🧴 洗手消毒 (免费)", command=lambda: self.action_manager.start_activity("洗手消毒",0,5,lambda s: setattr(s,'hygiene',min(100,s.hygiene+15))))
-        basic_menu.add_command(label="🧽 快速洗脸 (免费)", command=lambda: self.action_manager.start_activity("快速洗脸",0,8,lambda s: setattr(s,'hygiene',min(100,s.hygiene+25))))
-        basic_menu.add_command(label="🪥 刷牙 (免费)", command=lambda: self.action_manager.start_activity("刷牙",0,10,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+20)), setattr(s,'charm',s.charm+3))))
+        basic_menu.add_command(label="🧽 快速洗脸 (免费)", command=lambda: self.action_manager.start_activity("快速洗脸",0,8,lambda s: setattr(s,'hygiene',min(100,s.hygiene+25))))        basic_menu.add_command(label="🪥 刷牙 (免费)", command=lambda: self.action_manager.start_activity("刷牙",0,10,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+20)), setattr(s,'charm',s.charm+3))))
         if inv.get("湿巾",0) > 0:
             basic_menu.add_command(label=f"🧻 湿巾擦拭 (剩余{inv['湿巾']})", command=lambda: self.action_manager.use_inventory_item("湿巾",12,lambda s: setattr(s,'hygiene',min(100,s.hygiene+40))))
         else:
             basic_menu.add_command(label="🧻 湿巾擦拭 (无库存)", state="disabled")
         basic_menu.add_command(label="🚿 快速淋浴 (免费)", command=lambda: self.action_manager.start_activity("快速淋浴",0,20,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+80)), setattr(s,'stamina',min(100,s.stamina+5)), setattr(s,'mood',min(100,s.mood+5)))))
-        basic_menu.add_command(label="🛁 泡澡 (免费)", command=lambda: self.action_manager.start_activity("泡澡",0,50,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+100)), setattr(s,'stamina',min(100,s.stamina+10)), setattr(s,'mood',min(100,s.mood+20)))))
-        menu.add_cascade(label="🧼 基础清洁", menu=basic_menu)
+        basic_menu.add_command(label="🧽 快速洗脸 (免费)", command=lambda: self.action_manager.start_clean_action("快速洗脸",0,8,lambda s: setattr(s,'hygiene',min(100,s.hygiene+25))))
+        basic_menu.add_command(label="🛁 泡澡 (免费)", command=lambda: self.action_manager.start_clean_action("泡澡",0,50,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+100)), setattr(s,'stamina',min(100,s.stamina+10)), setattr(s,'mood',min(100,s.mood+20)))))        menu.add_cascade(label="🧼 基础清洁", menu=basic_menu)
 
         if s.stage == 1:
             work_menu = tk.Menu(menu, tearoff=0)
