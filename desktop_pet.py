@@ -82,6 +82,7 @@ class DesktopPet:
         self.current_activity = None
         self.status_win = None
         self.toast_win = None
+        self.current_activity_name = None   # 当前活动名称（字符串）
 
         self.tray = None
         self.create_tray()
