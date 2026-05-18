@@ -372,7 +372,8 @@ class DesktopPet:
             self.current_activity.pos_x = self.x + (self.pet_w - 280) // 2
             self.current_activity.pos_y = self.y + self.pet_h + 10
             self.current_activity.win.geometry(f"+{self.current_activity.pos_x}+{self.current_activity.pos_y}")
-        self.move_notifications()
+        if self.performance_win:
+            self.performance_win.move_to(self.x, self.y)
 
     def _on_pet_configure(self, event):
         """宠物窗口位置变化时，通知所有注册的跟随窗口"""
