@@ -101,7 +101,7 @@ class PerformanceWindow:
         total = self.duration + self.extra_dur
         pct = min(100, self.elapsed / total * 100)
         self.bar.delete("all")
-        self.bar.create_rectangle(0,0,250*pct/100,4,fill="#000000",outline="")
+        self.bar.create_rectangle(0,0,250*pct/100,4,fill="#4CAF50",outline="")
         rem = max(0, total - self.elapsed)
         self.time_label.config(text=f"剩余 {rem//60:02d}:{rem%60:02d}")
         self.win.after(1000, self._update)
