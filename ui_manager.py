@@ -1,6 +1,5 @@
 import tkinter as tk
 
-
 class UIManager:
     def __init__(self, pet):
         self.pet = pet
@@ -28,7 +27,6 @@ class UIManager:
         if h > 420:
             h = 420
 
-        # 位置更新函数（实时跟随用）
         def update_position():
             if win.winfo_exists():
                 x = self.pet.x + (self.pet.pet_w - w) // 2
@@ -37,7 +35,6 @@ class UIManager:
                     y = self.pet.y + self.pet.pet_h + 12
                 win.geometry(f"{w}x{h}+{x}+{y}")
 
-        # 初始定位
         update_position()
 
         if title:
@@ -51,7 +48,6 @@ class UIManager:
                               fg="#404040", bg="#FFFFFF", wraplength=300, justify="left")
         desc_label.pack(pady=(16, 0), padx=20)
 
-        # 关闭窗口时取消注册
         def on_close():
             self.pet.unregister_follow_window(win)
             win.destroy()
@@ -64,12 +60,8 @@ class UIManager:
         close_btn.pack(pady=16)
 
         auto_close_ms = int(max(3000, min(12000, len(text) * 250)))
-        def auto_close():
-            if win.winfo_exists():
-                on_close()
-        win.after(auto_close_ms, auto_close)
+        win.after(auto_close_ms, lambda: on_close() if win.winfo_exists() else None)
 
-        # 注册实时跟随
         self.pet.register_follow_window(win, update_position)
 
     def show_toast(self, msg, duration=1500):
