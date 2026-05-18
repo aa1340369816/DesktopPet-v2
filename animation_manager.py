@@ -12,7 +12,6 @@ import numpy as np
 class AnimationManager:
     def __init__(self, pet):
         self.pet = pet
-        # 以下属性从 pet 移过来
         self.base_dir = pet.base_dir
         self.image_folder = pet.image_folder
         self.progress_win = None
@@ -139,6 +138,13 @@ class AnimationManager:
         self.pet.anim_after_id = self.pet.pet_win.after(50, self._animate_frame, loop, callback)
 
     def switch_to_idle(self):
+        # 1. 彻底停掉当前动画
+        if self.pet.anim_after_id:
+            self.pet.pet_win.after_cancel(self.pet.anim_after_id)
+            self.pet.anim_after_id = None
+        self.pet.current_anim = None   # 清空动画引用，防止 _animate_frame 继续运行
+
+        # 2. 切换到待机动画或静态图
         if self.pet.anim_idle_frames:
             self.play_animation(self.pet.anim_idle_frames, loop=True)
         else:
