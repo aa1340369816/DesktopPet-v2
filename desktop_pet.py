@@ -149,13 +149,13 @@ class DesktopPet:
 
     # 效果表
     feed_effect_map = {
-        "超级食物碗": (20, lambda s: s.feed(30,5,0)),
-        "波奇饭便当": (25, lambda s: s.feed(40,8,5)),
-        "绿色排毒果汁": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), s.gain_exp(3))),
-        "牛肉沙拉碗": (35, lambda s: s.feed(55,10,8)),
+        "超级食物碗": (10, lambda s: s.feed(30,5,0)),
+        "波奇饭便当": (10, lambda s: s.feed(40,8,5)),
+        "绿色排毒果汁": (10, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), s.gain_exp(3))),
+        "牛肉沙拉碗": (10, lambda s: s.feed(55,10,8)),
         "泡菜豆腐锅": (40, lambda s: s.feed(50,5,10)),
         "荞麦冷面": (30, lambda s: s.feed(45,5,5)),
-        "冰美式": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+15)), s.gain_exp(3))),
+        "冰美式": (10, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+15)), s.gain_exp(3))),
         "抹茶燕麦拿铁": (20, lambda s: (setattr(s,'satiety',min(100,s.satiety+10)), setattr(s,'stamina',min(100,s.stamina+5)), setattr(s,'mood',min(100,s.mood+20)), setattr(s,'charm',s.charm+3), s.gain_exp(3))),
         "燕麦拿铁": (20, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), setattr(s,'stamina',min(100,s.stamina+8)), setattr(s,'mood',min(100,s.mood+25)), s.gain_exp(3))),
         "气泡冷萃": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+20)), setattr(s,'mood',min(100,s.mood+10)), s.gain_exp(3))),
