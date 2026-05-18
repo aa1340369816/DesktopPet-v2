@@ -2,7 +2,6 @@ import tkinter as tk
 import random
 
 class PerformanceWindow:
-    """训练/通告进度窗口（可选隐藏）"""
     def __init__(self, parent, pet_state, act_type, act_sub, callback,
                  pet_x, pet_y, pet_w=160, pet_h=220, visible=True):
         self.parent = parent
@@ -14,7 +13,6 @@ class PerformanceWindow:
         self.pet_h = pet_h
         self.win = None
 
-        # 计算时长
         if act_type == "train":
             base = random.randint(45*60, 60*60) if act_sub != "shape" else 40*60
             base += random.randint(-5*60, 5*60)
@@ -40,7 +38,6 @@ class PerformanceWindow:
             self._start_timer()
 
     def _create_window(self, pet_x, pet_y):
-        """创建极简进度窗口"""
         self.win = tk.Toplevel(self.parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
@@ -67,14 +64,12 @@ class PerformanceWindow:
         self._update()
 
     def _start_timer(self):
-        """无窗口模式的后台计时"""
         def tick():
             if self.cancelled:
                 return
             if self.elapsed >= self.duration + self.extra_dur:
                 self.finish()
                 return
-            # 模拟进度推进，步长 1 秒
             self.elapsed += self.step
             if self.parent:
                 self.parent.after(1000, tick)
@@ -114,7 +109,6 @@ class PerformanceWindow:
     def finish(self):
         if self.cancelled:
             return
-        self.pet_state.game_time.advance_hours(self.game_hours)
         if self.act_type == "train":
             msg = self.pet_state.apply_train_result(self.act_sub, modifier=self.event_modifier, extra_msg=self.event_msg)
         else:
@@ -128,13 +122,6 @@ class PerformanceWindow:
         self.cancelled = True
         if self.win:
             self.win.destroy()
-        # 注意：取消时暂不调用 callback，活动取消
-
-    def move_to(self, x, y):
-        if self.win:
-            self.pos_x = x + (self.pet_w - 300) // 2
-            self.pos_y = y + self.pet_h + 16
-            self.win.geometry(f"+{self.pos_x}+{self.pos_y}")
 
     def get_progress(self):
         """返回进度百分比和剩余时间描述"""
@@ -149,3 +136,9 @@ class PerformanceWindow:
         else:
             rem_text = f"{rem_sec}秒"
         return pct, rem_text
+
+    def move_to(self, x, y):
+        if self.win:
+            self.pos_x = x + (self.pet_w - 300) // 2
+            self.pos_y = y + self.pet_h + 16
+            self.win.geometry(f"+{self.pos_x}+{self.pos_y}")
