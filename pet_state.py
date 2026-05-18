@@ -82,13 +82,25 @@ class PetState:
         return int((self.vocal + self.dance + self.acting + self.variety) / 4)
 
     def decay(self):
-        self.satiety = max(0, self.satiety - 4)
-        self.hygiene = max(0, self.hygiene - 3)
-        self.mood = max(0, self.mood - 2 * (1 - self.mood_decay_reduce))
+        # 每小时衰减一次（基于真实时间）
+        if not hasattr(self, '_last_decay_ts'):
+            self._last_decay_ts = time.time()
+        if time.time() - self._last_decay_ts < 3600:  # 3600秒 = 1小时
+            return
+        self._last_decay_ts = time.time()
+
+        # 自然消耗
+        self.satiety = max(0, self.satiety - 5)       # 饱食 -5/小时
+        self.hygiene = max(0, self.hygiene - 3)       # 清洁 -3/小时
+        self.mood = max(0, self.mood - 2 * (1 - self.mood_decay_reduce))  # 心情 -2/小时
+
+        # 生病判断
         if self.hygiene < 30 and random.random() < 0.15:
             self.sick = True
         if self.health < 20 and random.random() < 0.3:
             self.sick = True
+
+        # 体力耗尽强制休息
         if self.stamina <= 0 and not self.resting:
             self.resting = True
             self.bubble_msg = "体力耗尽，必须休息！"
@@ -99,10 +111,12 @@ class PetState:
                 self.resting = False
                 self.bubble_msg = "体力恢复了！"
                 self.bubble_timer = 3
+
         if self.bubble_timer > 0:
             self.bubble_timer -= 1
         else:
             self.bubble_msg = ""
+
         self.check_promotion()
 
     def feed(self, satiety_amt=20, stamina_amt=0, mood_amt=0):
