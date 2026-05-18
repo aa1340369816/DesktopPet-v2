@@ -118,6 +118,7 @@ class PetState:
             self.bubble_msg = ""
 
         self.check_promotion()
+        self.check_promotion()
 
     def feed(self, satiety_amt=20, stamina_amt=0, mood_amt=0):
         if self.resting:
