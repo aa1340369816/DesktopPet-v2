@@ -34,12 +34,6 @@ class ActivityWindow:
         self.bar = tk.Canvas(self.win, width=240, height=4, bg="#E5E5E5", highlightthickness=0)
         self.bar.pack(pady=8)
 
-        btn_frame = tk.Frame(self.win, bg="#F0F0F0")
-        btn_frame.pack()
-        tk.Button(btn_frame, text="中止", command=self.cancel,
-                  font=("Segoe UI", 12), fg="#000000", bg="#FFFFFF",
-                  bd=1, relief="solid", activebackground="#F5F5F5").pack(side=tk.LEFT, padx=8)
-
         self._update()
 
     def _start_timer(self):
@@ -66,7 +60,7 @@ class ActivityWindow:
         self.elapsed += self.step
         pct = min(100, self.elapsed / self.duration * 100)
         self.bar.delete("all")
-        self.bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#000000", outline="")
+        self.bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#4CAF50", outline="")
         self.win.after(100, self._update)
 
     def cancel(self):
