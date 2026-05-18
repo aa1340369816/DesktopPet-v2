@@ -229,7 +229,7 @@ class ActionManager:
         self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
                                                    pet_x=self.pet.x, pet_y=self.pet.y,
                                                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                                                   visible=False)
+                                                   visible=True)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_train(self, type_):
@@ -249,7 +249,7 @@ class ActionManager:
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "train", type_,
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
                                                      pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                                                     visible=False)
+                                                     visible=True)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_schedule(self):
@@ -269,7 +269,7 @@ class ActionManager:
         self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "schedule", "",
                                                      callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
                                                      pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                                                     visible=False)
+                                                     visible=True)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def on_activity_end(self, msg=None):
