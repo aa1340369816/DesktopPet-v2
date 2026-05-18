@@ -88,7 +88,9 @@ class DesktopPet:
         threading.Thread(target=self.tray.run, daemon=True).start()
 
         self.drag_data = {"x": 0, "y": 0}
-        self.follow_windows = []   # 每个元素是 (win, update_func)
+        self.follow_windows = []
+        # 绑定宠物窗口移动事件，实时通知跟随窗口
+        self.pet_win.bind('<Configure>', self._on_pet_configure)
 
 
         self.event_scheduler = EventScheduler(
@@ -370,13 +372,15 @@ class DesktopPet:
             self.current_activity.win.geometry(f"+{self.current_activity.pos_x}+{self.current_activity.pos_y}")
         self.move_notifications()
 
-        # 实时更新所有跟随窗口
+    def _on_pet_configure(self, event):
+        """宠物窗口位置变化时，通知所有注册的跟随窗口"""
         for win, update_func in self.follow_windows[:]:
             if win.winfo_exists():
                 update_func()
             else:
                 self.follow_windows.remove((win, update_func))
 
+    
     def auto_save_loop(self):
         self.state.save()
         self.root.after(30000, self.auto_save_loop)
