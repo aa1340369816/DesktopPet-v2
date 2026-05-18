@@ -206,6 +206,7 @@ class ActionManager:
 
         def on_finish():
             effect_func(s)
+            self.pet.anim_manager.switch_to_idle()   # ← 新增：切回待机
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
@@ -217,18 +218,13 @@ class ActionManager:
         def on_cancel():
             if price > 0:
                 s.gold += price
+            self.pet.anim_manager.switch_to_idle()   # ← 新增：取消也切回待机
             self.pet.ui_manager.show_toast(f"❌ {name}已取消")
             self.pet.current_activity = None
             self.pet.current_activity_name = None
             s.save()
             self.pet.event_scheduler.set_action(None)
             self.pet.status_panel_manager.refresh_tray_status_if_open()
-
-        self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
-                                                   pet_x=self.pet.x, pet_y=self.pet.y,
-                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                                                   visible=False)
-        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_train(self, type_):
         if self.pet.current_activity or self.pet.performance_win:
