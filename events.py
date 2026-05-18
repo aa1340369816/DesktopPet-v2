@@ -113,10 +113,10 @@ class EventScheduler:
         if now < self.next_check_time:
             return
 
-        self.next_check_time = now + 10   # 每10秒检查一次
+        self.next_check_time = now + 10
 
-        #if random.random() > 0.5:
-            ￥return
+        # if random.random() > 0.5:
+        #     return
 
         available = []
         for event in EVENT_POOL:
