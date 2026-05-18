@@ -9,11 +9,15 @@ class ActionManager:
         self.pet = pet
 
     def cancel_current_activity(self):
-        """中止当前所有活动，返还金币，不增加数值"""
+        """中止当前所有活动，返还金币，不增加数值，同时清理引用和动画"""
         if self.pet.current_activity:
             self.pet.current_activity.cancel()
+            self.pet.current_activity = None
         if self.pet.performance_win:
             self.pet.performance_win.cancel()
+            self.pet.performance_win = None
+        # 强制切回待机动画
+        self.pet.anim_manager.switch_to_idle()
 
     def do_part_time_job(self, job):
         if self.pet.current_activity or self.pet.performance_win:
@@ -201,6 +205,7 @@ class ActionManager:
         def on_finish():
             effect_func(s)
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
+            self.pet.current_activity = None   # 新增
             s.save()
             self.pet.refresh_status()
             self.pet.event_scheduler.set_action(None)
@@ -210,15 +215,10 @@ class ActionManager:
             if price > 0:
                 s.gold += price
             self.pet.ui_manager.show_toast(f"❌ {name}已取消")
+            self.pet.current_activity = None   # 新增
             s.save()
             self.pet.event_scheduler.set_action(None)
             self.pet.status_panel_manager.refresh_tray_status_if_open()
-
-        self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
-                                                   pet_x=self.pet.x, pet_y=self.pet.y,
-                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                                                   visible=False)
-        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def start_train(self, type_):
         if self.pet.current_activity or self.pet.performance_win:
@@ -257,7 +257,7 @@ class ActionManager:
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
     def on_activity_end(self, msg=None):
-        self.pet.performance_win = None
+        self.pet.performance_win = None   # 已存在，但请确认有这一行
         if msg:
             self.pet.ui_manager.show_info(msg)
         self.pet.state.save()
