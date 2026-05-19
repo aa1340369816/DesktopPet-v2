@@ -172,12 +172,10 @@ class ActionManager:
     def start_interview(self):
         s = self.pet.state
 
-        # 检查金币
         if s.gold < 10:
             self.pet.ui_manager.show_info("金币不足10，无法报名面试！")
             return
 
-        # 冲突检测
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并准备面试？"):
                 return
@@ -207,13 +205,11 @@ class ActionManager:
 
         def select_prep(prep_type, effect_func, label):
             choice_win.destroy()
-            # 扣报名费
             s.gold -= 10
             self.pet.current_activity_name = "面试中"
 
-            # ===== 阶段1：等待叫号（8分钟）=====
+            # 阶段1：等待叫号（8分钟）
             def stage1_finish(st):
-                # 阶段2：才艺展示（3分钟）
                 self.pet.current_activity = None
                 self.pet.current_activity = ActivityWindow(
                     self.pet.pet_win, "🎤 才艺展示...", 180,
@@ -224,7 +220,6 @@ class ActionManager:
                     visible=True)
 
             def stage2_finish(st):
-                # 阶段3：镜头测试（2分钟）
                 self.pet.current_activity = None
                 self.pet.current_activity = ActivityWindow(
                     self.pet.pet_win, "📸 镜头测试...", 120,
@@ -235,15 +230,12 @@ class ActionManager:
                     visible=True)
 
             def stage3_finish(st):
-                # 阶段4：即兴问答（2分钟）- 弹出选择题
                 self.pet.current_activity = None
                 self._interview_question(st)
 
-            # 初始化所有阶段效果
             self._interview_effect = effect_func
             self._interview_label = label
 
-            # 开始阶段1
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "⏳ 等待叫号...", 480,
                 lambda st: stage1_finish(st),
@@ -294,7 +286,6 @@ class ActionManager:
             self.pet.unregister_follow_window(choice_win)
             choice_win.destroy()
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
-
 
     def _interview_question(self, state):
         """阶段4：即兴问答 - 弹出选择题"""
@@ -368,11 +359,9 @@ class ActionManager:
 
     def _interview_result(self, state):
         """阶段5结束后 → 阶段6：结果揭晓（3分钟）→ 最终判定"""
-        # 先应用准备效果
         if hasattr(self, '_interview_effect'):
             self._interview_effect(state)
 
-        # 阶段6：结果揭晓（3分钟）
         self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
             self.pet.pet_win, "📢 结果揭晓...", 180,
@@ -427,7 +416,6 @@ class ActionManager:
         self.start_activity(name, price, duration, effect_func)
 
     def start_activity(self, name, price, duration, effect_func, refund_item=None):
-        # 冲突检测
         if self.pet.current_activity or self.pet.performance_win:
             if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始新活动？"):
                 return
