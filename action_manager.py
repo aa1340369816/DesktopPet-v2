@@ -1,7 +1,16 @@
 import random
+import tkinter as tk
 import tkinter.messagebox as messagebox
 from activity_window import ActivityWindow
 from performance_window import PerformanceWindow
+
+
+def _random_talent_boost(state):
+    """随机增加1点唱功或舞蹈"""
+    if random.random() < 0.5:
+        state.vocal += 1
+    else:
+        state.dance += 1
 
 
 class ActionManager:
@@ -162,25 +171,116 @@ class ActionManager:
 
     def start_interview(self):
         s = self.pet.state
-        # 三种录取条件（满足任一即可）
-        general = (s.vocal >= 25 and s.dance >= 25 and s.charm >= 25 and 
-                   (s.vocal + s.dance + s.charm) >= 95)
-        talent = (s.vocal >= 38 or s.dance >= 38)
-        visual = (s.charm >= 42)
 
-        if general or talent or visual:
-            # 判断录取类型（用于提示）
-            if general:
-                msg = "面试通过！成为见习练习生（综合录取）"
-            elif talent:
-                msg = "面试通过！成为见习练习生（特长录取）"
+        # 检查金币
+        if s.gold < 10:
+            self.pet.ui_manager.show_info("金币不足10，无法报名面试！")
+            return
+
+        # 冲突检测
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并准备面试？"):
+                return
             else:
-                msg = "面试通过！成为见习练习生（颜值录取）"
-            s.promote(2, "见习练习生 🎓")
-            self.pet.ui_manager.show_toast(msg)
-        else:
-            self.pet.ui_manager.show_info("面试未通过，继续努力吧")
-        s.save()
+                self.cancel_current_activity()
+
+        # 弹出准备选项窗口
+        choice_win = tk.Toplevel(self.pet.pet_win)
+        choice_win.overrideredirect(True)
+        choice_win.wm_attributes("-topmost", True)
+        choice_win.configure(bg="#FFFFFF")
+        choice_win.attributes("-alpha", 1.0)
+
+        w = 360
+        pad = 20
+
+        # 标题
+        tk.Label(choice_win, text="面试前准备", font=("Segoe UI", 12, "bold"),
+                 fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        tk.Frame(choice_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+
+        # 说明
+        tk.Label(choice_win, text="报名费10金币，等待30分钟\n选择一个准备方式：",
+                 font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
+                 justify="left").pack(pady=(12, 0), padx=pad)
+
+        # 选项按钮框架
+        btn_frame = tk.Frame(choice_win, bg="#FFFFFF")
+        btn_frame.pack(pady=12, padx=pad, fill="x")
+
+        def select_prep(prep_type, effect_func, label):
+            choice_win.destroy()
+            # 扣报名费
+            s.gold -= 10
+            # 等待30分钟（1800秒）
+            def on_interview_finish(state):
+                # 先应用准备效果
+                effect_func(state)
+                # 再判断录取
+                general = (state.vocal >= 25 and state.dance >= 25 and state.charm >= 25 and
+                           (state.vocal + state.dance + state.charm) >= 95)
+                talent = (state.vocal >= 38 or state.dance >= 38)
+                visual = (state.charm >= 42)
+                if general or talent or visual:
+                    if general:
+                        msg = "面试通过！成为见习练习生（综合录取）"
+                    elif talent:
+                        msg = "面试通过！成为见习练习生（特长录取）"
+                    else:
+                        msg = "面试通过！成为见习练习生（颜值录取）"
+                    state.promote(2, "见习练习生 🎓")
+                else:
+                    msg = "面试未通过，继续努力吧"
+                self.pet.ui_manager.show_toast(msg)
+
+            self.start_activity("面试准备(" + label + ")", 10, 1800, on_interview_finish)
+
+        # 四个准备选项
+        preps = [
+            ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
+            ("🧼 精心打扮", lambda st: setattr(st, 'charm', st.charm + 2), "打扮"),
+            ("😴 充分休息", lambda st: setattr(st, 'mood', min(100, st.mood + 6)), "休息"),
+            ("🎤 临时抱佛脚", _random_talent_boost, "抱佛脚"),
+        ]
+
+        for text, func, label in preps:
+            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10),
+                            fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                            bd=1, relief="solid",
+                            padx=12, pady=8,
+                            command=lambda f=func, l=label: select_prep("prep", f, l))
+            btn.pack(fill="x", pady=4)
+
+        # 取消按钮
+        tk.Button(choice_win, text="取消", font=("Segoe UI", 10),
+                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                  bd=1, relief="solid", padx=12, pady=4,
+                  command=choice_win.destroy).pack(pady=(0, pad))
+
+        # 计算位置（宠物头顶居中）
+        choice_win.update_idletasks()
+        h = choice_win.winfo_reqheight()
+        x = self.pet.x + (self.pet.pet_w - w) // 2
+        y = self.pet.y - h - 12
+        if y < 0:
+            y = self.pet.y + self.pet.pet_h + 12
+        choice_win.geometry(f"{w}x{h}+{x}+{y}")
+
+        # 跟随宠物移动
+        def update_position():
+            if choice_win.winfo_exists():
+                nx = self.pet.x + (self.pet.pet_w - w) // 2
+                ny = self.pet.y - h - 12
+                if ny < 0:
+                    ny = self.pet.y + self.pet.pet_h + 12
+                choice_win.geometry(f"+{nx}+{ny}")
+                choice_win.after(200, update_position)
+        self.pet.register_follow_window(choice_win, update_position)
+
+        def on_close():
+            self.pet.unregister_follow_window(choice_win)
+            choice_win.destroy()
+        choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
     def use_inventory_item(self, name, duration, effect_func):
         if self.pet.state.inventory.get(name, 0) <= 0:
