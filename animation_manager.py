@@ -32,6 +32,10 @@ class AnimationManager:
             "泡澡": "bath",
             "快速洗脸": "face_wash",
             "咖啡店打工": "cafe",
+            "社区声乐班": "vocal_beginner",
+            "街舞入门课": "dance_beginner",
+            "进阶声乐": "vocal_advanced",
+            "进阶舞蹈": "dance_advanced",
         }
 
     def generate_caches_async(self):
