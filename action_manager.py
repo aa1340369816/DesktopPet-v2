@@ -196,7 +196,7 @@ class ActionManager:
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(choice_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        tk.Label(choice_win, text="报名费10金币，等待30分钟\n选择一个准备方式：",
+        tk.Label(choice_win, text="报名费10金币，准备30分钟\n选择一个准备方式：",
                  font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
                  justify="left").pack(pady=(12, 0), padx=pad)
 
@@ -206,39 +206,19 @@ class ActionManager:
         def select_prep(prep_type, effect_func, label):
             choice_win.destroy()
             s.gold -= 10
-            self.pet.current_activity_name = "面试中"
+            self.pet.current_activity_name = "面试准备中"
 
-            # 阶段1：等待叫号（8分钟）
-            def stage1_finish(st):
+            # 准备30分钟的活动（测试时可改为10）
+            def on_prep_finish(state):
+                # 应用准备效果
+                effect_func(state)
                 self.pet.current_activity = None
-                self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "🎤 才艺展示...", 180,
-                    lambda st2: stage2_finish(st2),
-                    lambda: None,
-                    pet_x=self.pet.x, pet_y=self.pet.y,
-                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                    visible=True)
-
-            def stage2_finish(st):
-                self.pet.current_activity = None
-                self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "📸 镜头测试...", 120,
-                    lambda st2: stage3_finish(st2),
-                    lambda: None,
-                    pet_x=self.pet.x, pet_y=self.pet.y,
-                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                    visible=True)
-
-            def stage3_finish(st):
-                self.pet.current_activity = None
-                self._interview_question(st)
-
-            self._interview_effect = effect_func
-            self._interview_label = label
+                # 进入面试阶段
+                self._start_interview_stages(state)
 
             self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "⏳ 等待叫号...", 480,
-                lambda st: stage1_finish(st),
+                self.pet.pet_win, "面试准备(" + label + ")...", 10,  # 30分钟=1800秒，测试时可改为10
+                lambda st: on_prep_finish(st),
                 lambda: None,
                 pet_x=self.pet.x, pet_y=self.pet.y,
                 pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
@@ -286,6 +266,43 @@ class ActionManager:
             self.pet.unregister_follow_window(choice_win)
             choice_win.destroy()
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
+
+    def _start_interview_stages(self, state):
+        """进入面试的各个阶段"""
+        self.pet.current_activity_name = "面试中"
+
+        # 阶段1：等待叫号（8分钟）
+        def stage1_finish(st):
+            self.pet.current_activity = None
+            self.pet.current_activity = ActivityWindow(
+                self.pet.pet_win, "🎤 才艺展示...", 180,
+                lambda st2: stage2_finish(st2),
+                lambda: None,
+                pet_x=self.pet.x, pet_y=self.pet.y,
+                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                visible=True)
+
+        def stage2_finish(st):
+            self.pet.current_activity = None
+            self.pet.current_activity = ActivityWindow(
+                self.pet.pet_win, "📸 镜头测试...", 120,
+                lambda st2: stage3_finish(st2),
+                lambda: None,
+                pet_x=self.pet.x, pet_y=self.pet.y,
+                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                visible=True)
+
+        def stage3_finish(st):
+            self.pet.current_activity = None
+            self._interview_question(st)
+
+        self.pet.current_activity = ActivityWindow(
+            self.pet.pet_win, "⏳ 等待叫号...", 480,
+            lambda st: stage1_finish(st),
+            lambda: None,
+            pet_x=self.pet.x, pet_y=self.pet.y,
+            pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+            visible=True)
 
     def _interview_question(self, state):
         """阶段4：即兴问答 - 弹出选择题"""
@@ -359,9 +376,6 @@ class ActionManager:
 
     def _interview_result(self, state):
         """阶段5结束后 → 阶段6：结果揭晓（3分钟）→ 最终判定"""
-        if hasattr(self, '_interview_effect'):
-            self._interview_effect(state)
-
         self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
             self.pet.pet_win, "📢 结果揭晓...", 180,
