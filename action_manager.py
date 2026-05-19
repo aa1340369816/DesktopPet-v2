@@ -6,7 +6,6 @@ from performance_window import PerformanceWindow
 
 
 def _random_talent_boost(state):
-    """随机增加1点唱功或舞蹈"""
     if random.random() < 0.5:
         state.vocal += 1
     else:
@@ -168,7 +167,7 @@ class ActionManager:
 
         self.start_activity("街头表演", 0, 3600, effect)
 
-    # ==================== 面试（全新单窗口多阶段）====================
+    # ==================== 面试（完全自建倒计时，不依赖 ActivityWindow）====================
     def start_interview(self):
         s = self.pet.state
         if s.gold < 10:
@@ -181,7 +180,7 @@ class ActionManager:
             else:
                 self.cancel_current_activity()
 
-        # 弹出准备选项窗口
+        # 准备选择窗口
         choice_win = tk.Toplevel(self.pet.pet_win)
         choice_win.overrideredirect(True)
         choice_win.wm_attributes("-topmost", True)
@@ -190,14 +189,9 @@ class ActionManager:
 
         w = 360
         pad = 20
-
-        tk.Label(choice_win, text="🤔 面试前准备", font=("Segoe UI", 12, "bold"),
-                 fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        tk.Label(choice_win, text="🤔 面试前准备", font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(choice_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
-
-        tk.Label(choice_win, text="报名费10金币，面试总时长28分钟\n选择一个准备方式：",
-                 font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
-                 justify="left").pack(pady=(12, 0), padx=pad)
+        tk.Label(choice_win, text="报名费10金币，面试总时长28分钟\n选择一个准备方式：", font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF", justify="left").pack(pady=(12, 0), padx=pad)
 
         btn_frame = tk.Frame(choice_win, bg="#FFFFFF")
         btn_frame.pack(pady=12, padx=pad, fill="x")
@@ -207,15 +201,22 @@ class ActionManager:
             s.gold -= 10
             self.pet.current_activity_name = "面试中"
 
-            # 定义所有阶段（标题, 时长秒, 完成回调）
-            stages = [
-                (f"🤔 面试准备({label})...", 10, effect_func),           # 10分钟
-                ("⏳ 等待叫号...", 10, None),                            # 4分钟
-                ("🎤 才艺展示...", 10, None),                            # 3分钟
-                ("📸 镜头测试...", 10, None),                            # 2分钟
+            # 阶段定义（标题, 时长秒, 是否弹出问答）
+            self._interview_stages = [
+                (f"🤔 面试准备({label})...", 10, False),
+                ("⏳ 等待叫号...", 10, False),
+                ("🎤 才艺展示...", 10, False),
+                ("📸 镜头测试...", 10, False),
+                ("🎙️ 即兴问答", 0, True),     # 特殊标记，弹出选择
+                ("📋 结果等候...", 10, False),
+                ("📢 结果揭晓...", 10, False),
             ]
-            # 启动多阶段活动
-            self._run_interview_stages(s, stages, 0)
+            self._interview_effect = effect_func  # 保存准备效果，稍后应用
+            self._interview_state = s
+            # 创建进度条窗口（只创建一次）
+            self._create_interview_progress_window()
+            # 启动阶段0
+            self._run_interview_stage(0)
 
         preps = [
             ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
@@ -223,19 +224,11 @@ class ActionManager:
             ("😴 充分休息", lambda st: setattr(st, 'mood', min(100, st.mood + 6)), "休息"),
             ("🎤 临时抱佛脚", _random_talent_boost, "抱佛脚"),
         ]
-
         for text, func, label in preps:
-            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10),
-                            fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                            bd=1, relief="solid",
-                            padx=12, pady=8,
-                            command=lambda f=func, l=label: select_prep(f, l))
+            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=8, command=lambda f=func, l=label: select_prep(f, l))
             btn.pack(fill="x", pady=4)
 
-        tk.Button(choice_win, text="取消", font=("Segoe UI", 10),
-                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                  bd=1, relief="solid", padx=12, pady=4,
-                  command=choice_win.destroy).pack(pady=(0, pad))
+        tk.Button(choice_win, text="取消", font=("Segoe UI", 10), fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=4, command=choice_win.destroy).pack(pady=(0, pad))
 
         choice_win.update_idletasks()
         h = choice_win.winfo_reqheight()
@@ -260,37 +253,77 @@ class ActionManager:
             choice_win.destroy()
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
-    def _run_interview_stages(self, state, stages, index):
-        """在单个 ActivityWindow 内依次执行多个阶段"""
+    def _create_interview_progress_window(self):
+        """创建面试专用的进度条窗口（宠物脚下）"""
+        win = tk.Toplevel(self.pet.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.wm_attributes("-transparentcolor", "#F0F0F0")
+        win.configure(bg="#F0F0F0")
+        bw, bh = 300, 80
+        pos_x = self.pet.x + (self.pet.pet_w - bw) // 2
+        pos_y = self.pet.y + self.pet.pet_h + 16
+        win.geometry(f"{bw}x{bh}+{pos_x}+{pos_y}")
+
+        title_label = tk.Label(win, text="", font=("Segoe UI", 12, "bold"), fg="#1A1A1A", bg="#F0F0F0")
+        title_label.pack(pady=(8, 0))
+        bar = tk.Canvas(win, width=240, height=4, bg="#E5E5E5", highlightthickness=0)
+        bar.pack(pady=8)
+
+        self._interview_win = win
+        self._interview_title = title_label
+        self._interview_bar = bar
+        # 注册跟随
+        def update_position():
+            if win.winfo_exists():
+                nx = self.pet.x + (self.pet.pet_w - bw) // 2
+                ny = self.pet.y + self.pet.pet_h + 16
+                win.geometry(f"+{nx}+{ny}")
+                win.after(200, update_position)
+        self.pet.register_follow_window(win, update_position)
+
+    def _run_interview_stage(self, index):
+        """执行单个阶段"""
+        stages = self._interview_stages
         if index >= len(stages):
-            # 所有阶段结束，进入最终判定（结果揭晓）
-            self._interview_final(state)
+            self._finish_interview()
             return
 
-        title, duration, callback = stages[index]
+        title, duration, is_question = stages[index]
+        self._interview_title.config(text=title)
+        self._interview_bar.delete("all")
+        self._interview_bar.create_rectangle(0, 0, 0, 4, fill="#4CAF50", outline="")
 
-        # 创建/覆盖当前活动的计时器，阶段结束时执行回调并继续下一阶段
-        def stage_finish(st):
-            if callback:
-                callback(st)
-            self.pet.current_activity = None
-            # 如果下一阶段是即兴问答（在 stages 外单独处理）
-            if index == len(stages) - 1:
-                # 最后一个阶段结束后弹出即兴问答
-                self._interview_question(state)
-            else:
+        if is_question:
+            # 弹出即兴问答，问答结束会调用 _on_question_done 继续下一阶段
+            self._interview_state.game_time = None  # 暂时不管
+            self._interview_question()
+        else:
+            # 正常倒计时
+            self._start_stage_timer(index, duration)
+
+    def _start_stage_timer(self, index, total_sec):
+        """倒计时更新进度条"""
+        start_time = time.time()
+        def update_bar():
+            if not self._interview_win or not self._interview_win.winfo_exists():
+                return
+            elapsed = time.time() - start_time
+            pct = min(100, int(elapsed / total_sec * 100))
+            self._interview_bar.delete("all")
+            self._interview_bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#4CAF50", outline="")
+            if elapsed >= total_sec:
+                # 本阶段结束，应用效果（如果是准备阶段）
+                if index == 0 and self._interview_effect:
+                    self._interview_effect(self._interview_state)
                 # 进入下一阶段
-                self._run_interview_stages(state, stages, index + 1)
+                self._run_interview_stage(index + 1)
+            else:
+                self._interview_win.after(100, update_bar)
+        update_bar()
 
-        self.pet.current_activity = ActivityWindow(
-            self.pet.pet_win, title, duration, stage_finish,
-            lambda: None,
-            pet_x=self.pet.x, pet_y=self.pet.y,
-            pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-            visible=True)
-
-    def _interview_question(self, state):
-        """即兴问答弹窗"""
+    def _interview_question(self):
+        """弹出即兴问答窗口（模态）"""
         q_win = tk.Toplevel(self.pet.pet_win)
         q_win.overrideredirect(True)
         q_win.wm_attributes("-topmost", True)
@@ -299,38 +332,26 @@ class ActionManager:
 
         w = 320
         pad = 16
-
-        tk.Label(q_win, text="🎙️ 即兴问答", font=("Segoe UI", 12, "bold"),
-                 fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        tk.Label(q_win, text="🎙️ 即兴问答", font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(q_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
-        tk.Label(q_win, text="面试官突然问：\n「你觉得自己最大的优势是什么？」",
-                 font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
-                 justify="left", wraplength=280).pack(pady=(12, 0), padx=pad)
+        tk.Label(q_win, text="面试官突然问：\n「你觉得自己最大的优势是什么？」", font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF", justify="left", wraplength=280).pack(pady=(12, 0), padx=pad)
 
         btn_frame = tk.Frame(q_win, bg="#FFFFFF")
         btn_frame.pack(pady=12, padx=pad, fill="x")
 
         def answer(attr, val):
             q_win.destroy()
-            setattr(state, attr, getattr(state, attr) + val)
-            # 进入结果等候（4分钟） + 结果揭晓（3分钟）合并为两个阶段
-            self._run_interview_stages(state, [
-                ("📋 结果等候...", 240, None),
-                ("📢 结果揭晓...", 180, None),
-            ], 0)
+            setattr(self._interview_state, attr, getattr(self._interview_state, attr) + val)
+            # 问答结束，继续后续阶段（结果等候、结果揭晓）
+            self._run_interview_stage(self._interview_stages.index(("🎙️ 即兴问答", 0, True)) + 1)
 
         answers = [
             ("「我的唱功是最好的」", "vocal", 2),
             ("「我的舞蹈很有感染力」", "dance", 2),
             ("「我的综合实力很强」", "charm", 2),
         ]
-
         for text, attr, val in answers:
-            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10),
-                            fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                            bd=1, relief="solid",
-                            padx=12, pady=8,
-                            command=lambda a=attr, v=val: answer(a, v))
+            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=8, command=lambda a=attr, v=val: answer(a, v))
             btn.pack(fill="x", pady=4)
 
         q_win.update_idletasks()
@@ -356,13 +377,16 @@ class ActionManager:
             q_win.destroy()
         q_win.protocol("WM_DELETE_WINDOW", on_close)
 
-    def _interview_final(self, state):
-        """最终判定录取结果"""
-        self.pet.current_activity = None
+    def _finish_interview(self):
+        """面试完成，判定结果"""
+        if self._interview_win:
+            self._interview_win.destroy()
+            self._interview_win = None
+
+        state = self._interview_state
         self.pet.current_activity_name = None
 
-        general = (state.vocal >= 25 and state.dance >= 25 and state.charm >= 25 and
-                   (state.vocal + state.dance + state.charm) >= 95)
+        general = (state.vocal >= 25 and state.dance >= 25 and state.charm >= 25 and (state.vocal + state.dance + state.charm) >= 95)
         talent = (state.vocal >= 38 or state.dance >= 38)
         visual = (state.charm >= 42)
 
@@ -384,7 +408,7 @@ class ActionManager:
         self.pet.event_scheduler.set_action(None)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
-    # ==================== 通用活动接口 ====================
+    # ==================== 通用活动接口（不变）====================
     def use_inventory_item(self, name, duration, effect_func):
         if self.pet.state.inventory.get(name, 0) <= 0:
             self.pet.ui_manager.show_info("背包中没有该物品！")
