@@ -168,7 +168,7 @@ class ActionManager:
 
         self.start_activity("街头表演", 0, 3600, effect)
 
-    # ========== 面试功能 ==========
+    # ==================== 面试（全新单窗口多阶段）====================
     def start_interview(self):
         s = self.pet.state
         if s.gold < 10:
@@ -195,7 +195,7 @@ class ActionManager:
                  fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
         tk.Frame(choice_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        tk.Label(choice_win, text="报名费10金币，准备10分钟\n选择一个准备方式：",
+        tk.Label(choice_win, text="报名费10金币，面试总时长28分钟\n选择一个准备方式：",
                  font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF",
                  justify="left").pack(pady=(12, 0), padx=pad)
 
@@ -207,54 +207,15 @@ class ActionManager:
             s.gold -= 10
             self.pet.current_activity_name = "面试中"
 
-            # 阶段1：面试准备（10分钟）
-            def prep_finish(st):
-                effect_func(st)          # 应用准备效果
-                self.pet.current_activity = None
-                # 阶段2：等待叫号（4分钟）
-                self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "⏳ 等待叫号...", 10,
-                    lambda st2: stage2_finish(st2),
-                    lambda: None,
-                    pet_x=self.pet.x, pet_y=self.pet.y,
-                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                    visible=True)
-
-            def stage2_finish(st):
-                self.pet.current_activity = None
-                # 阶段3：才艺展示（3分钟）
-                self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "🎤 才艺展示...", 10,
-                    lambda st2: stage3_finish(st2),
-                    lambda: None,
-                    pet_x=self.pet.x, pet_y=self.pet.y,
-                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                    visible=True)
-
-            def stage3_finish(st):
-                self.pet.current_activity = None
-                # 阶段4：镜头测试（2分钟）
-                self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "📸 镜头测试...", 10,
-                    lambda st2: stage4_finish(st2),
-                    lambda: None,
-                    pet_x=self.pet.x, pet_y=self.pet.y,
-                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                    visible=True)
-
-            def stage4_finish(st):
-                self.pet.current_activity = None
-                # 阶段5：即兴问答（弹窗）
-                self._interview_question(st)
-
-            # 启动阶段1
-            self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, f"🤔 面试准备({label})...", 10,  # 10分钟，测试可改为10
-                lambda st: prep_finish(st),
-                lambda: None,
-                pet_x=self.pet.x, pet_y=self.pet.y,
-                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                visible=True)
+            # 定义所有阶段（标题, 时长秒, 完成回调）
+            stages = [
+                (f"🤔 面试准备({label})...", 10, effect_func),           # 10分钟
+                ("⏳ 等待叫号...", 10, None),                            # 4分钟
+                ("🎤 才艺展示...", 10, None),                            # 3分钟
+                ("📸 镜头测试...", 10, None),                            # 2分钟
+            ]
+            # 启动多阶段活动
+            self._run_interview_stages(s, stages, 0)
 
         preps = [
             ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
@@ -299,6 +260,35 @@ class ActionManager:
             choice_win.destroy()
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
+    def _run_interview_stages(self, state, stages, index):
+        """在单个 ActivityWindow 内依次执行多个阶段"""
+        if index >= len(stages):
+            # 所有阶段结束，进入最终判定（结果揭晓）
+            self._interview_final(state)
+            return
+
+        title, duration, callback = stages[index]
+
+        # 创建/覆盖当前活动的计时器，阶段结束时执行回调并继续下一阶段
+        def stage_finish(st):
+            if callback:
+                callback(st)
+            self.pet.current_activity = None
+            # 如果下一阶段是即兴问答（在 stages 外单独处理）
+            if index == len(stages) - 1:
+                # 最后一个阶段结束后弹出即兴问答
+                self._interview_question(state)
+            else:
+                # 进入下一阶段
+                self._run_interview_stages(state, stages, index + 1)
+
+        self.pet.current_activity = ActivityWindow(
+            self.pet.pet_win, title, duration, stage_finish,
+            lambda: None,
+            pet_x=self.pet.x, pet_y=self.pet.y,
+            pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+            visible=True)
+
     def _interview_question(self, state):
         """即兴问答弹窗"""
         q_win = tk.Toplevel(self.pet.pet_win)
@@ -323,14 +313,11 @@ class ActionManager:
         def answer(attr, val):
             q_win.destroy()
             setattr(state, attr, getattr(state, attr) + val)
-            # 阶段6：结果等候（6分钟）
-            self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "📋 结果等候...", 360,
-                lambda st: self._interview_result(st),
-                lambda: None,
-                pet_x=self.pet.x, pet_y=self.pet.y,
-                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                visible=True)
+            # 进入结果等候（4分钟） + 结果揭晓（3分钟）合并为两个阶段
+            self._run_interview_stages(state, [
+                ("📋 结果等候...", 240, None),
+                ("📢 结果揭晓...", 180, None),
+            ], 0)
 
         answers = [
             ("「我的唱功是最好的」", "vocal", 2),
@@ -369,18 +356,7 @@ class ActionManager:
             q_win.destroy()
         q_win.protocol("WM_DELETE_WINDOW", on_close)
 
-    def _interview_result(self, state):
-        """结果等候结束 → 结果揭晓（3分钟）"""
-        self.pet.current_activity = None
-        self.pet.current_activity = ActivityWindow(
-            self.pet.pet_win, "📢 结果揭晓...", 10,
-            lambda st: self._final_judge(st),
-            lambda: None,
-            pet_x=self.pet.x, pet_y=self.pet.y,
-            pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-            visible=True)
-
-    def _final_judge(self, state):
+    def _interview_final(self, state):
         """最终判定录取结果"""
         self.pet.current_activity = None
         self.pet.current_activity_name = None
@@ -408,7 +384,7 @@ class ActionManager:
         self.pet.event_scheduler.set_action(None)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
-    # ========== 通用活动接口 ==========
+    # ==================== 通用活动接口 ====================
     def use_inventory_item(self, name, duration, effect_func):
         if self.pet.state.inventory.get(name, 0) <= 0:
             self.pet.ui_manager.show_info("背包中没有该物品！")
