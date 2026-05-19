@@ -206,22 +206,10 @@ class ActionManager:
         def select_prep(prep_type, effect_func, label):
             choice_win.destroy()
             s.gold -= 10
-            self.pet.current_activity_name = "面试准备中"
-
-            # 准备30分钟的活动（测试时可改为10）
-            def on_prep_finish(state):
-                effect_func(state)
-                self.pet.current_activity = None
-                self.pet.status_panel_manager.refresh_tray_status_if_open()
-                self._start_interview_stages(state)   # 直接调用即可，无需延迟
-
-            self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "面试准备(" + label + ")...", 10,  # 30分钟，测试可改为10
-                lambda st: on_prep_finish(st),
-                lambda: None,
-                pet_x=self.pet.x, pet_y=self.pet.y,
-                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                visible=True)
+            # 立即应用准备效果
+            effect_func(s)
+            # 直接进入面试阶段（合并了准备和面试）
+            self._start_interview_stages(s)
 
         preps = [
             ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
@@ -267,13 +255,12 @@ class ActionManager:
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
     def _start_interview_stages(self, state):
-        """进入面试的各个阶段"""
+        """进入面试的各个阶段（已合并准备，直接从等待叫号开始）"""
         self.pet.current_activity_name = "面试中"
 
         # 阶段1：等待叫号（8分钟）
         def stage1_finish(st):
             self.pet.current_activity = None
-            # 阶段2：才艺展示（3分钟）
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "🎤 才艺展示...", 180,
                 lambda st2: stage2_finish(st2),
@@ -284,7 +271,6 @@ class ActionManager:
 
         def stage2_finish(st):
             self.pet.current_activity = None
-            # 阶段3：镜头测试（2分钟）
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "📸 镜头测试...", 120,
                 lambda st2: stage3_finish(st2),
@@ -295,11 +281,8 @@ class ActionManager:
 
         def stage3_finish(st):
             self.pet.current_activity = None
-            # 阶段4：即兴问答
             self._interview_question(st)
 
-        # 清空旧的 current_activity，防止冲突
-        self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
             self.pet.pet_win, "⏳ 等待叫号...", 480,
             lambda st: stage1_finish(st),
@@ -309,7 +292,7 @@ class ActionManager:
             visible=True)
 
     def _interview_question(self, state):
-        """阶段4：即兴问答"""
+        """阶段4：即兴问答 - 弹出选择题"""
         q_win = tk.Toplevel(self.pet.pet_win)
         q_win.overrideredirect(True)
         q_win.wm_attributes("-topmost", True)
