@@ -194,14 +194,11 @@ class StatusPanelManager:
             if not win.winfo_exists():
                 return
             if not win.winfo_ismapped():
-                # 窗口已被隐藏，停止刷新
                 self._refresh_job = None
                 return
 
-            # 检查活动是否还存在
             act_name = self.pet.current_activity_name
             if not act_name:
-                # 活动已结束，关闭面板或刷新显示空闲
                 self.show_tray_status()
                 return
 
@@ -213,38 +210,29 @@ class StatusPanelManager:
             elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
                 new_pct, new_text = self.pet.performance_win.get_progress()
 
-            # 更新总进度
             new_total = 0
             if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_total_progress'):
                 new_total = self.pet.current_activity.get_total_progress()
 
-            # 找到对应的控件并更新
+            # 按控件类型更新，不依赖索引
             if hasattr(self, '_dynamic_widgets'):
-                # 名称 label 是第0个，阶段进度条第1个，剩余文字第2个，总进度条可能第3，总文字可能第4
-                # 根据实际添加的顺序更新
-                widgets = self._dynamic_widgets
-                # 更新阶段进度条
-                if len(widgets) >= 2:
-                    stage_canvas = widgets[1]
-                    stage_canvas.delete("all")
-                    stage_canvas.create_rectangle(0, 0, 240 * new_pct / 100, 3, fill="#000000", outline="")
-                # 更新剩余文字
-                if len(widgets) >= 3:
-                    remain_label = widgets[2]
-                    remain_label.config(text=f"剩余 {new_text}")
-                # 更新总进度条和文字
-                if len(widgets) >= 5:
-                    total_canvas = widgets[3]
-                    total_canvas.delete("all")
-                    total_canvas.create_rectangle(0, 0, 240 * new_total / 100, 2, fill="#CCCCCC", outline="")
-                    total_text_label = widgets[4]
-                    total_text_label.config(text=f"总进度 {new_total}%")
+                for w in self._dynamic_widgets:
+                    if isinstance(w, tk.Canvas):
+                        # 区分阶段进度条和总进度条（高度不同）
+                        h = w.winfo_reqheight()
+                        w.delete("all")
+                        if h == 3:  # 阶段进度条
+                            w.create_rectangle(0, 0, 240 * new_pct / 100, 3, fill="#000000", outline="")
+                        elif h == 2:  # 总进度条
+                            w.create_rectangle(0, 0, 240 * new_total / 100, 2, fill="#CCCCCC", outline="")
+                    elif isinstance(w, tk.Label):
+                        # 根据文本前缀判断是剩余时间还是总进度
+                        text = w.cget("text")
+                        if text.startswith("剩余"):
+                            w.config(text=f"剩余 {new_text}")
+                        elif text.startswith("总进度"):
+                            w.config(text=f"总进度 {new_total}%")
 
-            # 继续循环
-            self._refresh_job = win.after(1000, refresh_loop)
-
-        # 只有在有活动时才启动刷新
-        if activity_name:
             self._refresh_job = win.after(1000, refresh_loop)
 
     def refresh_tray_status_if_open(self):
