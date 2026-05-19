@@ -31,6 +31,7 @@ class AnimationManager:
             "冰美式": "drink_iceamericano",
             "泡澡": "bath",
             "快速洗脸": "face_wash",
+            "便利店兼职": "store",  
             "咖啡店打工": "cafe",
             "社区声乐班": "vocal_beginner",
             "街舞入门课": "dance_beginner",
