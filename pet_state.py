@@ -40,11 +40,26 @@ class PetState:
         self.fatigue = 0
         self.consecutive_train = 0
 
-        self.vocal = random.randint(10, 40)
-        self.dance = random.randint(10, 40)
+        # 唱功/舞蹈：加权随机
+        def weighted_vocal_dance():
+            ranges = [(10,14), (15,20), (21,25), (26,30), (31,35), (36,40)]
+            weights = [30, 38, 18, 10, 3, 1]
+            chosen = random.choices(ranges, weights=weights, k=1)[0]
+            return random.randint(chosen[0], chosen[1])
+
+        self.vocal = weighted_vocal_dance()
+        self.dance = weighted_vocal_dance()
         self.acting = 10
         self.variety = 0
-        self.charm = random.randint(10, 45)
+
+        # 魅力：加权随机
+        def weighted_charm():
+            ranges = [(20,25), (26,30), (31,35), (36,38), (39,42), (43,45)]
+            weights = [30, 32, 22, 10, 4, 2]
+            chosen = random.choices(ranges, weights=weights, k=1)[0]
+            return random.randint(chosen[0], chosen[1])
+
+        self.charm = weighted_charm()
         self.popularity = 0
         self.fans = 0
 
@@ -63,7 +78,7 @@ class PetState:
         self.focus_end_time = 0
         self.focus_duration = 25 * 60
 
-        self.event_cooldowns = {}   # 事件冷却记录
+        self.event_cooldowns = {}
 
     @property
     def pet_w(self):
