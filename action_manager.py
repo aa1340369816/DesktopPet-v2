@@ -251,7 +251,7 @@ class ActionManager:
 
             # 启动阶段1
             self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "面试准备(" + label + ")...", 1800,  # 30分钟，测试可改为10
+                self.pet.pet_win, "面试准备(" + label + ")...", 10,  # 30分钟，测试可改为10
                 lambda st: stage1_finish(st),
                 lambda: None,
                 pet_x=self.pet.x, pet_y=self.pet.y,
