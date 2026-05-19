@@ -202,13 +202,13 @@ class ActionManager:
             self.pet.current_activity_name = "面试中"
 
             self._interview_stages = [
-                (f"🤔 面试准备({label})...", 600, False),
-                ("⏳ 等待叫号...", 240, False),
-                ("🎤 才艺展示...", 180, False),
-                ("📸 镜头测试...", 120, False),
+                (f"🤔 面试准备({label})...", 10, False),
+                ("⏳ 等待叫号...", 10, False),
+                ("🎤 才艺展示...", 10, False),
+                ("📸 镜头测试...", 10, False),
                 ("🎙️ 即兴问答", 0, True),
-                ("📋 结果等候...", 240, False),
-                ("📢 结果揭晓...", 180, False),
+                ("📋 结果等候...", 10, False),
+                ("📢 结果揭晓...", 10, False),
             ]
             self._interview_effect = effect_func
             self._interview_state = s
