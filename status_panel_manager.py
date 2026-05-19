@@ -101,11 +101,14 @@ class StatusPanelManager:
             tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(12, 0))
             tk.Label(win, text=f"当前：{activity_name}", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg="#FFFFFF").pack(pady=(12, 0))
-            bar = tk.Canvas(win, width=240, height=3, bg="#E5E5E5", highlightthickness=0)
-            bar.pack(pady=(8, 4), padx=pad)
-            bar.create_rectangle(0, 0, 240 * progress_pct / 100, 3, fill="#000000", outline="")
-            tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
-                     fg="#808080", bg="#FFFFFF").pack()
+            # 总时长进度条（如果有总进度数据）
+            if hasattr(self.pet.current_activity, 'get_total_progress'):
+                total_pct = self.pet.current_activity.get_total_progress()
+                tk.Label(win, text=f"总进度 {total_pct}%", font=("Segoe UI", 8),
+                         fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
+                total_bar = tk.Canvas(win, width=240, height=2, bg="#E5E5E5", highlightthickness=0)
+                total_bar.pack(pady=(4, 0), padx=pad)
+                total_bar.create_rectangle(0, 0, 240 * total_pct / 100, 2, fill="#CCCCCC", outline="")
 
             def cancel_activity():
                 self.pet.action_manager.cancel_current_activity()
