@@ -16,7 +16,13 @@ class AnimationManager:
         self.image_folder = pet.image_folder
         self.progress_win = None
 
-        # 活动 → 视频文件名（无后缀）的映射表
+        # 视频目录：base_dir/videos
+        self.video_dir = os.path.join(self.base_dir, 'videos')
+        # 缓存目录：base_dir/cache
+        self.cache_dir = os.path.join(self.base_dir, 'cache')
+        os.makedirs(self.video_dir, exist_ok=True)
+        os.makedirs(self.cache_dir, exist_ok=True)
+
         self.action_anim_map = {
             "超级食物碗": "feed_superbowl",
             "波奇饭便当": "feed_poke",
@@ -32,11 +38,9 @@ class AnimationManager:
         scales = [1.5, 2.0]
         tasks = []
         for scale in scales:
-            # 原有的动画
             for base in ["greet", "idle", "store"]:
                 if not self.cache_exists(scale, base):
                     tasks.append((scale, base))
-            # 新增的动画（从映射表中获取所有唯一 base 名）
             for base in set(self.action_anim_map.values()):
                 if not self.cache_exists(scale, base):
                     tasks.append((scale, base))
@@ -47,27 +51,25 @@ class AnimationManager:
                     executor.submit(self.ensure_cache_for_scale, scale, name)
 
     def play_action_animation(self, action_name):
-        """根据活动名称播放对应动画（循环）"""
         if action_name not in self.action_anim_map:
             return
         base = self.action_anim_map[action_name]
         self.ensure_cache_for_scale(self.pet.state.scale, base)
-        cache_dir = os.path.join(self.base_dir, f"{base}_{self.pet.state.scale}x_frames")
+        cache_dir = os.path.join(self.cache_dir, f"{base}_{self.pet.state.scale}x_frames")
         frames = self.load_png_frames(cache_dir)
         if frames:
             self.play_animation(frames, loop=True)
 
-    # ---------- 以下方法保持不变 ----------
     def cache_exists(self, scale, base_name):
-        cache_dir = os.path.join(self.base_dir, f"{base_name}_{scale}x_frames")
+        cache_dir = os.path.join(self.cache_dir, f"{base_name}_{scale}x_frames")
         return os.path.isdir(cache_dir) and os.listdir(cache_dir)
 
     def ensure_cache_for_scale(self, scale, base_name):
-        cache_dir = os.path.join(self.base_dir, f"{base_name}_{scale}x_frames")
+        cache_dir = os.path.join(self.cache_dir, f"{base_name}_{scale}x_frames")
         if not os.path.isdir(cache_dir) or not os.listdir(cache_dir):
             video_path = None
             for ext in [".webm", ".mp4"]:
-                candidate = os.path.join(self.base_dir, f"{base_name}{ext}")
+                candidate = os.path.join(self.video_dir, f"{base_name}{ext}")
                 if os.path.exists(candidate):
                     video_path = candidate
                     break
@@ -108,8 +110,8 @@ class AnimationManager:
 
     def load_current_anim_frames(self):
         scale = self.pet.state.scale
-        greet_dir = os.path.join(self.base_dir, f"greet_{scale}x_frames")
-        idle_dir = os.path.join(self.base_dir, f"idle_{scale}x_frames")
+        greet_dir = os.path.join(self.cache_dir, f"greet_{scale}x_frames")
+        idle_dir = os.path.join(self.cache_dir, f"idle_{scale}x_frames")
         greet_frames = self.load_png_frames(greet_dir)
         idle_frames = self.load_png_frames(idle_dir) if os.path.isdir(idle_dir) else None
         return greet_frames, idle_frames
@@ -129,7 +131,7 @@ class AnimationManager:
     def load_frames(self, folder):
         if not os.path.isdir(folder):
             return False
-        files = sorted([f for f in os.listdir(folder) if f.lower().endswith((".png",".gif"))])
+        files = sorted([f for f in os.listdir(folder) if f.lower().endswith((".png", ".gif"))])
         if not files:
             return False
         for f in files:
@@ -176,7 +178,7 @@ class AnimationManager:
 
     def play_store_animation(self):
         self.ensure_cache_for_scale(self.pet.state.scale, "store")
-        cache_dir = os.path.join(self.base_dir, f"store_{self.pet.state.scale}x_frames")
+        cache_dir = os.path.join(self.cache_dir, f"store_{self.pet.state.scale}x_frames")
         frames = self.load_png_frames(cache_dir)
         if frames:
             self.play_animation(frames, loop=True)
