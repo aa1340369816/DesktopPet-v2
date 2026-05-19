@@ -162,10 +162,22 @@ class ActionManager:
 
     def start_interview(self):
         s = self.pet.state
-        total = s.vocal + s.dance + s.charm
-        if total >= 90 and s.vocal >= 25 and s.dance >= 25 and s.charm >= 25:
+        # 三种录取条件（满足任一即可）
+        general = (s.vocal >= 25 and s.dance >= 25 and s.charm >= 25 and 
+                   (s.vocal + s.dance + s.charm) >= 95)
+        talent = (s.vocal >= 38 or s.dance >= 38)
+        visual = (s.charm >= 42)
+
+        if general or talent or visual:
+            # 判断录取类型（用于提示）
+            if general:
+                msg = "面试通过！成为见习练习生（综合录取）"
+            elif talent:
+                msg = "面试通过！成为见习练习生（特长录取）"
+            else:
+                msg = "面试通过！成为见习练习生（颜值录取）"
             s.promote(2, "见习练习生 🎓")
-            self.pet.ui_manager.show_toast("面试通过！成为见习练习生")
+            self.pet.ui_manager.show_toast(msg)
         else:
             self.pet.ui_manager.show_info("面试未通过，继续努力吧")
         s.save()
