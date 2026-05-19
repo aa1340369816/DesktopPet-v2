@@ -1,4 +1,5 @@
 import random
+import time
 import tkinter as tk
 import tkinter.messagebox as messagebox
 from activity_window import ActivityWindow
@@ -167,7 +168,7 @@ class ActionManager:
 
         self.start_activity("街头表演", 0, 3600, effect)
 
-    # ==================== 面试（完全自建倒计时，不依赖 ActivityWindow）====================
+    # ==================== 面试（自建倒计时，带托盘进度）====================
     def start_interview(self):
         s = self.pet.state
         if s.gold < 10:
@@ -180,7 +181,6 @@ class ActionManager:
             else:
                 self.cancel_current_activity()
 
-        # 准备选择窗口
         choice_win = tk.Toplevel(self.pet.pet_win)
         choice_win.overrideredirect(True)
         choice_win.wm_attributes("-topmost", True)
@@ -201,21 +201,18 @@ class ActionManager:
             s.gold -= 10
             self.pet.current_activity_name = "面试中"
 
-            # 阶段定义（标题, 时长秒, 是否弹出问答）
             self._interview_stages = [
-                (f"🤔 面试准备({label})...", 10, False),
-                ("⏳ 等待叫号...", 10, False),
-                ("🎤 才艺展示...", 10, False),
-                ("📸 镜头测试...", 10, False),
-                ("🎙️ 即兴问答", 0, True),     # 特殊标记，弹出选择
-                ("📋 结果等候...", 10, False),
-                ("📢 结果揭晓...", 10, False),
+                (f"🤔 面试准备({label})...", 600, False),
+                ("⏳ 等待叫号...", 240, False),
+                ("🎤 才艺展示...", 180, False),
+                ("📸 镜头测试...", 120, False),
+                ("🎙️ 即兴问答", 0, True),
+                ("📋 结果等候...", 240, False),
+                ("📢 结果揭晓...", 180, False),
             ]
-            self._interview_effect = effect_func  # 保存准备效果，稍后应用
+            self._interview_effect = effect_func
             self._interview_state = s
-            # 创建进度条窗口（只创建一次）
             self._create_interview_progress_window()
-            # 启动阶段0
             self._run_interview_stage(0)
 
         preps = [
@@ -254,7 +251,6 @@ class ActionManager:
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
     def _create_interview_progress_window(self):
-        """创建面试专用的进度条窗口（宠物脚下）"""
         win = tk.Toplevel(self.pet.pet_win)
         win.overrideredirect(True)
         win.wm_attributes("-topmost", True)
@@ -273,7 +269,18 @@ class ActionManager:
         self._interview_win = win
         self._interview_title = title_label
         self._interview_bar = bar
-        # 注册跟随
+
+        # 创建假活动对象，供托盘读取进度
+        self.pet.current_activity = type('obj', (object,), {
+            'title': '',
+            'elapsed': 0,
+            'duration': 1,
+            'get_progress': lambda self_obj: (
+                min(100, int(self_obj.elapsed / max(1, self_obj.duration) * 100)),
+                f"{max(0, self_obj.duration - self_obj.elapsed):.0f}秒"
+            )
+        })()
+
         def update_position():
             if win.winfo_exists():
                 nx = self.pet.x + (self.pet.pet_w - bw) // 2
@@ -283,7 +290,6 @@ class ActionManager:
         self.pet.register_follow_window(win, update_position)
 
     def _run_interview_stage(self, index):
-        """执行单个阶段"""
         stages = self._interview_stages
         if index >= len(stages):
             self._finish_interview()
@@ -294,36 +300,38 @@ class ActionManager:
         self._interview_bar.delete("all")
         self._interview_bar.create_rectangle(0, 0, 0, 4, fill="#4CAF50", outline="")
 
+        # 更新托盘用的活动对象
+        act = self.pet.current_activity
+        act.title = title
+        act.elapsed = 0
+        act.duration = duration
+
         if is_question:
-            # 弹出即兴问答，问答结束会调用 _on_question_done 继续下一阶段
-            self._interview_state.game_time = None  # 暂时不管
             self._interview_question()
         else:
-            # 正常倒计时
             self._start_stage_timer(index, duration)
 
     def _start_stage_timer(self, index, total_sec):
-        """倒计时更新进度条"""
         start_time = time.time()
+        act = self.pet.current_activity
+
         def update_bar():
             if not self._interview_win or not self._interview_win.winfo_exists():
                 return
             elapsed = time.time() - start_time
+            act.elapsed = elapsed
             pct = min(100, int(elapsed / total_sec * 100))
             self._interview_bar.delete("all")
             self._interview_bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#4CAF50", outline="")
             if elapsed >= total_sec:
-                # 本阶段结束，应用效果（如果是准备阶段）
                 if index == 0 and self._interview_effect:
                     self._interview_effect(self._interview_state)
-                # 进入下一阶段
                 self._run_interview_stage(index + 1)
             else:
                 self._interview_win.after(100, update_bar)
         update_bar()
 
     def _interview_question(self):
-        """弹出即兴问答窗口（模态）"""
         q_win = tk.Toplevel(self.pet.pet_win)
         q_win.overrideredirect(True)
         q_win.wm_attributes("-topmost", True)
@@ -342,8 +350,9 @@ class ActionManager:
         def answer(attr, val):
             q_win.destroy()
             setattr(self._interview_state, attr, getattr(self._interview_state, attr) + val)
-            # 问答结束，继续后续阶段（结果等候、结果揭晓）
-            self._run_interview_stage(self._interview_stages.index(("🎙️ 即兴问答", 0, True)) + 1)
+            # 跳过即兴问答阶段，进入结果等候
+            q_idx = self._interview_stages.index(("🎙️ 即兴问答", 0, True))
+            self._run_interview_stage(q_idx + 1)
 
         answers = [
             ("「我的唱功是最好的」", "vocal", 2),
@@ -378,14 +387,13 @@ class ActionManager:
         q_win.protocol("WM_DELETE_WINDOW", on_close)
 
     def _finish_interview(self):
-        """面试完成，判定结果"""
         if self._interview_win:
             self._interview_win.destroy()
             self._interview_win = None
-
-        state = self._interview_state
+        self.pet.current_activity = None
         self.pet.current_activity_name = None
 
+        state = self._interview_state
         general = (state.vocal >= 25 and state.dance >= 25 and state.charm >= 25 and (state.vocal + state.dance + state.charm) >= 95)
         talent = (state.vocal >= 38 or state.dance >= 38)
         visual = (state.charm >= 42)
@@ -408,7 +416,7 @@ class ActionManager:
         self.pet.event_scheduler.set_action(None)
         self.pet.status_panel_manager.refresh_tray_status_if_open()
 
-    # ==================== 通用活动接口（不变）====================
+    # ==================== 通用活动接口 ====================
     def use_inventory_item(self, name, duration, effect_func):
         if self.pet.state.inventory.get(name, 0) <= 0:
             self.pet.ui_manager.show_info("背包中没有该物品！")
