@@ -213,7 +213,7 @@ class ActionManager:
                 self.pet.current_activity = None
                 # 阶段2：等待叫号（4分钟）
                 self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "⏳ 等待叫号...", 240,
+                    self.pet.pet_win, "⏳ 等待叫号...", 10,
                     lambda st2: stage2_finish(st2),
                     lambda: None,
                     pet_x=self.pet.x, pet_y=self.pet.y,
@@ -224,7 +224,7 @@ class ActionManager:
                 self.pet.current_activity = None
                 # 阶段3：才艺展示（3分钟）
                 self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "🎤 才艺展示...", 180,
+                    self.pet.pet_win, "🎤 才艺展示...", 10,
                     lambda st2: stage3_finish(st2),
                     lambda: None,
                     pet_x=self.pet.x, pet_y=self.pet.y,
@@ -235,7 +235,7 @@ class ActionManager:
                 self.pet.current_activity = None
                 # 阶段4：镜头测试（2分钟）
                 self.pet.current_activity = ActivityWindow(
-                    self.pet.pet_win, "📸 镜头测试...", 120,
+                    self.pet.pet_win, "📸 镜头测试...", 10,
                     lambda st2: stage4_finish(st2),
                     lambda: None,
                     pet_x=self.pet.x, pet_y=self.pet.y,
@@ -249,7 +249,7 @@ class ActionManager:
 
             # 启动阶段1
             self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, f"🤔 面试准备({label})...", 600,  # 10分钟，测试可改为10
+                self.pet.pet_win, f"🤔 面试准备({label})...", 10,  # 10分钟，测试可改为10
                 lambda st: prep_finish(st),
                 lambda: None,
                 pet_x=self.pet.x, pet_y=self.pet.y,
@@ -373,7 +373,7 @@ class ActionManager:
         """结果等候结束 → 结果揭晓（3分钟）"""
         self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
-            self.pet.pet_win, "📢 结果揭晓...", 180,
+            self.pet.pet_win, "📢 结果揭晓...", 10,
             lambda st: self._final_judge(st),
             lambda: None,
             pet_x=self.pet.x, pet_y=self.pet.y,
