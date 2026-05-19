@@ -210,13 +210,10 @@ class ActionManager:
 
             # 准备30分钟的活动（测试时可改为10）
             def on_prep_finish(state):
-                # 先应用准备效果
                 effect_func(state)
-                # 清理当前活动引用（准备窗口的 finish 回调会销毁它，这里再确保一次）
                 self.pet.current_activity = None
                 self.pet.status_panel_manager.refresh_tray_status_if_open()
-                # 延迟 200 毫秒，等准备窗口彻底关闭后再启动面试阶段
-                self.pet.root.after(200, lambda: self._start_interview_stages(state))
+                self._start_interview_stages(state)   # 直接调用即可，无需延迟
 
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "面试准备(" + label + ")...", 10,  # 30分钟，测试可改为10
