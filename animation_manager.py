@@ -181,12 +181,6 @@ class AnimationManager:
             if self.pet.static_img:
                 self.pet.anim_label.configure(image=self.pet.static_img)
 
-    def play_store_animation(self):
-        self.ensure_cache_for_scale(self.pet.state.scale, "store")
-        cache_dir = os.path.join(self.cache_dir, f"store_{self.pet.state.scale}x_frames")
-        frames = self.load_png_frames(cache_dir)
-        if frames:
-            self.play_animation(frames, loop=True)
 
     def set_scale(self, scale):
         self.pet.state.scale = scale
