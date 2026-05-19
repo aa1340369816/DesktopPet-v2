@@ -9,6 +9,8 @@ class StatusPanelManager:
     def __init__(self, pet):
         self.pet = pet
         self.tray_status_win = None
+        self._refresh_job = None
+        self._dynamic_refs = {}       # 保存动态控件的字典
         self._create_tray_status_win()
 
     def _create_tray_status_win(self):
@@ -26,12 +28,9 @@ class StatusPanelManager:
             self._create_tray_status_win()
 
         win = self.tray_status_win
-        # 如果窗口已显示，只需提到最前，但也要刷新内容（可能已过时）
-        # 为了确保进度条动态更新，我们将重建内容并启动定时刷新
-        # 因此不再简单 return，而是强制重建并开始刷新循环
 
-        # 先停止旧的刷新循环（如果有）
-        if hasattr(self, '_refresh_job') and self._refresh_job:
+        # 停止旧的刷新循环
+        if self._refresh_job:
             win.after_cancel(self._refresh_job)
             self._refresh_job = None
 
@@ -57,7 +56,6 @@ class StatusPanelManager:
         screen_w = self.pet.pet_win.winfo_screenwidth()
         screen_h = self.pet.pet_win.winfo_screenheight()
 
-        # 清空窗口原有内容
         for widget in win.winfo_children():
             widget.destroy()
 
@@ -87,17 +85,17 @@ class StatusPanelManager:
             tk.Label(info_frame, text=line, font=("Segoe UI", 10),
                      fg="#404040", bg="#FFFFFF", anchor="w", justify="left").pack(fill="x", pady=2)
 
-        # ---------- 活动进度动态区域 ----------
-        # 用于存储需要动态更新的控件
-        self._dynamic_widgets = []
+        # 清空旧的动态控件引用
+        self._dynamic_refs = {}
 
         activity_name = self.pet.current_activity_name
-        progress_pct = 0
-        progress_text = ""
-        total_pct = 0
+        has_activity = False
 
         if activity_name:
-            # 尝试获取当前进度
+            # 尝试获取当前进度（初始值）
+            progress_pct = 0
+            progress_text = ""
+            total_pct = 0
             if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
                 progress_pct, progress_text = self.pet.current_activity.get_progress()
                 if hasattr(self.pet.current_activity, 'get_total_progress'):
@@ -105,37 +103,33 @@ class StatusPanelManager:
             elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
                 progress_pct, progress_text = self.pet.performance_win.get_progress()
 
-        if activity_name:
-            # 分隔线
+            has_activity = True
+
             tk.Frame(win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(12, 0))
-            # 活动名称
             name_label = tk.Label(win, text=f"当前：{activity_name}", font=("Segoe UI", 10, "bold"),
                                   fg="#000000", bg="#FFFFFF")
             name_label.pack(pady=(12, 0))
-            self._dynamic_widgets.append(name_label)
+            self._dynamic_refs['name_label'] = name_label
 
-            # 阶段进度条
             stage_bar = tk.Canvas(win, width=240, height=3, bg="#E5E5E5", highlightthickness=0)
             stage_bar.pack(pady=(8, 4), padx=pad)
-            self._dynamic_widgets.append(stage_bar)
+            self._dynamic_refs['stage_bar'] = stage_bar
 
-            # 剩余时间文字
             remain_label = tk.Label(win, text=f"剩余 {progress_text}", font=("Segoe UI", 9),
                                     fg="#808080", bg="#FFFFFF")
             remain_label.pack()
-            self._dynamic_widgets.append(remain_label)
+            self._dynamic_refs['remain_label'] = remain_label
 
-            # 总时长进度条（如果有）
             if hasattr(self.pet.current_activity, 'get_total_progress'):
                 total_bar = tk.Canvas(win, width=240, height=2, bg="#E5E5E5", highlightthickness=0)
                 total_bar.pack(pady=(8, 4), padx=pad)
-                self._dynamic_widgets.append(total_bar)
+                self._dynamic_refs['total_bar'] = total_bar
+
                 total_label = tk.Label(win, text=f"总进度 {total_pct}%", font=("Segoe UI", 8),
                                        fg="#808080", bg="#FFFFFF")
                 total_label.pack()
-                self._dynamic_widgets.append(total_label)
+                self._dynamic_refs['total_label'] = total_label
 
-            # 中止按钮
             def cancel_activity():
                 self.pet.action_manager.cancel_current_activity()
                 hide()
@@ -149,11 +143,9 @@ class StatusPanelManager:
             tk.Label(win, text="当前空闲", font=("Segoe UI", 9),
                      fg="#808080", bg="#FFFFFF").pack(pady=(8, 0))
 
-        # 关闭按钮
         def hide():
             win.withdraw()
-            # 停止刷新循环
-            if hasattr(self, '_refresh_job') and self._refresh_job:
+            if self._refresh_job:
                 win.after_cancel(self._refresh_job)
                 self._refresh_job = None
 
@@ -163,7 +155,6 @@ class StatusPanelManager:
                         command=hide)
         btn.pack(pady=(12, pad))
 
-        # 定位
         win.update_idletasks()
         h = win.winfo_reqheight()
         if h < 180:
@@ -185,11 +176,9 @@ class StatusPanelManager:
         win.geometry(f"{w}x{h}+{x}+{y}")
         win.attributes("-alpha", 1.0)
         win.deiconify()
-
-        # 绑定窗口关闭事件
         win.protocol("WM_DELETE_WINDOW", hide)
 
-        # 启动动态刷新
+        # 刷新循环
         def refresh_loop():
             if not win.winfo_exists():
                 return
@@ -202,37 +191,37 @@ class StatusPanelManager:
                 self.show_tray_status()
                 return
 
-            # 更新阶段进度
             new_pct = 0
             new_text = ""
+            new_total = 0
             if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_progress'):
                 new_pct, new_text = self.pet.current_activity.get_progress()
+                if hasattr(self.pet.current_activity, 'get_total_progress'):
+                    new_total = self.pet.current_activity.get_total_progress()
             elif self.pet.performance_win and hasattr(self.pet.performance_win, 'get_progress'):
                 new_pct, new_text = self.pet.performance_win.get_progress()
 
-            new_total = 0
-            if self.pet.current_activity and hasattr(self.pet.current_activity, 'get_total_progress'):
-                new_total = self.pet.current_activity.get_total_progress()
+            refs = self._dynamic_refs
+            # 更新名称（当前阶段可能变化）
+            if 'name_label' in refs:
+                refs['name_label'].config(text=f"当前：{act_name}")
+            # 更新阶段进度条
+            if 'stage_bar' in refs:
+                refs['stage_bar'].delete("all")
+                refs['stage_bar'].create_rectangle(0, 0, 240 * new_pct / 100, 3, fill="#000000", outline="")
+            # 更新剩余时间
+            if 'remain_label' in refs:
+                refs['remain_label'].config(text=f"剩余 {new_text}")
+            # 更新总进度条
+            if 'total_bar' in refs:
+                refs['total_bar'].delete("all")
+                refs['total_bar'].create_rectangle(0, 0, 240 * new_total / 100, 2, fill="#CCCCCC", outline="")
+            if 'total_label' in refs:
+                refs['total_label'].config(text=f"总进度 {new_total}%")
 
-            # 按控件类型更新，不依赖索引
-            if hasattr(self, '_dynamic_widgets'):
-                for w in self._dynamic_widgets:
-                    if isinstance(w, tk.Canvas):
-                        # 区分阶段进度条和总进度条（高度不同）
-                        h = w.winfo_reqheight()
-                        w.delete("all")
-                        if h == 3:  # 阶段进度条
-                            w.create_rectangle(0, 0, 240 * new_pct / 100, 3, fill="#000000", outline="")
-                        elif h == 2:  # 总进度条
-                            w.create_rectangle(0, 0, 240 * new_total / 100, 2, fill="#CCCCCC", outline="")
-                    elif isinstance(w, tk.Label):
-                        # 根据文本前缀判断是剩余时间还是总进度
-                        text = w.cget("text")
-                        if text.startswith("剩余"):
-                            w.config(text=f"剩余 {new_text}")
-                        elif text.startswith("总进度"):
-                            w.config(text=f"总进度 {new_total}%")
+            self._refresh_job = win.after(1000, refresh_loop)
 
+        if has_activity:
             self._refresh_job = win.after(1000, refresh_loop)
 
     def refresh_tray_status_if_open(self):
