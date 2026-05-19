@@ -33,8 +33,8 @@ class AnimationManager:
             "快速洗脸": "face_wash",
             "便利店兼职": "store",  
             "咖啡店打工": "cafe",
-            "社区声乐班": "vocal_beginner",
-            "街舞入门课": "dance_beginner",
+            "声乐班": "vocal_beginner",
+            "街舞课": "dance_beginner",
             "进阶声乐": "vocal_advanced",
             "进阶舞蹈": "dance_advanced",
         }
