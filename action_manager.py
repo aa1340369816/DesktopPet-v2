@@ -168,7 +168,7 @@ class ActionManager:
 
         self.start_activity("街头表演", 0, 3600, effect)
 
-    # ==================== 面试（自建倒计时，带托盘进度）====================
+    # ==================== 面试 ====================
     def start_interview(self):
         s = self.pet.state
         if s.gold < 10:
@@ -212,6 +212,8 @@ class ActionManager:
             ]
             self._interview_effect = effect_func
             self._interview_state = s
+            self._interview_start_time = time.time()
+            self._interview_total_duration = sum(d for _, d, _ in self._interview_stages)
             self._create_interview_progress_window()
             self._run_interview_stage(0)
 
@@ -270,15 +272,18 @@ class ActionManager:
         self._interview_title = title_label
         self._interview_bar = bar
 
-        # 创建假活动对象，供托盘读取进度
+        # 托盘用假活动对象，增加 total_duration 和 total_elapsed
         self.pet.current_activity = type('obj', (object,), {
             'title': '',
             'elapsed': 0,
             'duration': 1,
+            'total_duration': self._interview_total_duration,
+            'total_elapsed': 0,
             'get_progress': lambda self_obj: (
                 min(100, int(self_obj.elapsed / max(1, self_obj.duration) * 100)),
                 f"{max(0, self_obj.duration - self_obj.elapsed):.0f}秒"
-            )
+            ),
+            'get_total_progress': lambda self_obj: min(100, int(self_obj.total_elapsed / max(1, self_obj.total_duration) * 100)),
         })()
 
         def update_position():
@@ -300,7 +305,9 @@ class ActionManager:
         self._interview_bar.delete("all")
         self._interview_bar.create_rectangle(0, 0, 0, 4, fill="#4CAF50", outline="")
 
-        # 更新托盘用的活动对象
+        # 更新托盘显示的名称
+        self.pet.current_activity_name = title
+
         act = self.pet.current_activity
         act.title = title
         act.elapsed = 0
@@ -320,6 +327,7 @@ class ActionManager:
                 return
             elapsed = time.time() - start_time
             act.elapsed = elapsed
+            act.total_elapsed = time.time() - self._interview_start_time
             pct = min(100, int(elapsed / total_sec * 100))
             self._interview_bar.delete("all")
             self._interview_bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#4CAF50", outline="")
@@ -350,7 +358,6 @@ class ActionManager:
         def answer(attr, val):
             q_win.destroy()
             setattr(self._interview_state, attr, getattr(self._interview_state, attr) + val)
-            # 跳过即兴问答阶段，进入结果等候
             q_idx = self._interview_stages.index(("🎙️ 即兴问答", 0, True))
             self._run_interview_stage(q_idx + 1)
 
