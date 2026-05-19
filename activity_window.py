@@ -9,6 +9,7 @@ class ActivityWindow:
         self.elapsed = 0
         self.step = 0.1
         self.cancelled = False
+        self.finished = False          # 新增：防止重复完成
         self.on_finish = on_finish
         self.on_cancel = on_cancel
         self.win = None
@@ -38,7 +39,7 @@ class ActivityWindow:
 
     def _start_timer(self):
         def tick():
-            if self.cancelled:
+            if self.cancelled or self.finished:   # 检查是否已结束
                 return
             if self.elapsed >= self.duration:
                 self.finish()
@@ -52,7 +53,7 @@ class ActivityWindow:
     def _update(self):
         if not self.win or not self.win.winfo_exists():
             return
-        if self.cancelled:
+        if self.cancelled or self.finished:       # 检查是否已结束
             return
         if self.elapsed >= self.duration:
             self.finish()
@@ -71,15 +72,15 @@ class ActivityWindow:
             self.on_cancel()
 
     def finish(self):
-        if self.cancelled:
+        if self.cancelled or self.finished:      # 防止重复调用
             return
+        self.finished = True
         if self.win:
             self.win.destroy()
         if self.on_finish:
             self.on_finish()
 
     def get_progress(self):
-        """返回进度百分比 (0-100) 和剩余描述文本"""
         if self.duration <= 0:
             return 0, "即将完成"
         pct = min(100, int(self.elapsed / self.duration * 100))
