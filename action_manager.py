@@ -37,8 +37,7 @@ class ActionManager:
                 self.cancel_current_activity()
 
         if job == "便利店兼职":
-            self.pet.anim_manager.play_store_animation()
-            duration = 3600
+            self.pet.anim_manager.play_action_animation(job)   # job 即 "便利店兼职"            duration = 3600
             def effect(state):
                 state.gold += 20
                 state.satiety = max(0, state.satiety - 8)
@@ -96,6 +95,9 @@ class ActionManager:
             else:
                 self.cancel_current_activity()
 
+        # 播放对应培训动画（如果有）
+        self.pet.anim_manager.play_action_animation(course)
+
         if "声乐" in course:
             attr = "vocal"
         elif "舞蹈" in course:
@@ -108,6 +110,7 @@ class ActionManager:
         def effect(state):
             if attr:
                 setattr(state, attr, getattr(state, attr) + gain)
+            # 消耗
             if "进阶" in course:
                 if "声乐" in course:
                     state.satiety = max(0, state.satiety - 12)
@@ -141,6 +144,8 @@ class ActionManager:
                     state.hygiene = max(0, state.hygiene - 5)
                     state.mood = max(0, state.mood - 2)
             state.gain_exp(10)
+            # 培训结束切回待机
+            self.pet.anim_manager.switch_to_idle()
 
         self.start_activity(course, cost, duration, effect)
 
