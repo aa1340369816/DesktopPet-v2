@@ -210,14 +210,17 @@ class ActionManager:
 
             # 准备30分钟的活动（测试时可改为10）
             def on_prep_finish(state):
-                # 应用准备效果
+                # 先应用准备效果
                 effect_func(state)
+                # 清理当前活动引用
                 self.pet.current_activity = None
+                # 强制刷新托盘状态
+                self.pet.status_panel_manager.refresh_tray_status_if_open()
                 # 进入面试阶段
                 self._start_interview_stages(state)
 
             self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "面试准备(" + label + ")...", 10,  # 30分钟=1800秒，测试时可改为10
+                self.pet.pet_win, "面试准备(" + label + ")...", 1800,  # 30分钟，测试可改为10
                 lambda st: on_prep_finish(st),
                 lambda: None,
                 pet_x=self.pet.x, pet_y=self.pet.y,
@@ -274,6 +277,7 @@ class ActionManager:
         # 阶段1：等待叫号（8分钟）
         def stage1_finish(st):
             self.pet.current_activity = None
+            # 阶段2：才艺展示（3分钟）
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "🎤 才艺展示...", 180,
                 lambda st2: stage2_finish(st2),
@@ -284,6 +288,7 @@ class ActionManager:
 
         def stage2_finish(st):
             self.pet.current_activity = None
+            # 阶段3：镜头测试（2分钟）
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "📸 镜头测试...", 120,
                 lambda st2: stage3_finish(st2),
@@ -294,8 +299,11 @@ class ActionManager:
 
         def stage3_finish(st):
             self.pet.current_activity = None
+            # 阶段4：即兴问答
             self._interview_question(st)
 
+        # 清空旧的 current_activity，防止冲突
+        self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
             self.pet.pet_win, "⏳ 等待叫号...", 480,
             lambda st: stage1_finish(st),
@@ -305,7 +313,7 @@ class ActionManager:
             visible=True)
 
     def _interview_question(self, state):
-        """阶段4：即兴问答 - 弹出选择题"""
+        """阶段4：即兴问答"""
         q_win = tk.Toplevel(self.pet.pet_win)
         q_win.overrideredirect(True)
         q_win.wm_attributes("-topmost", True)
