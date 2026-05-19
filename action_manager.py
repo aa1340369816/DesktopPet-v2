@@ -206,10 +206,57 @@ class ActionManager:
         def select_prep(prep_type, effect_func, label):
             choice_win.destroy()
             s.gold -= 10
-            # 立即应用准备效果
-            effect_func(s)
-            # 直接进入面试阶段（合并了准备和面试）
-            self._start_interview_stages(s)
+            self.pet.current_activity_name = "面试中"
+
+            # 阶段1：面试准备（30分钟）
+            def stage1_finish(st):
+                # 应用准备效果
+                effect_func(st)
+                # 阶段2：等待叫号（8分钟）
+                self.pet.current_activity = None
+                self.pet.current_activity = ActivityWindow(
+                    self.pet.pet_win, "⏳ 等待叫号...", 480,
+                    lambda st2: stage2_finish(st2),
+                    lambda: None,
+                    pet_x=self.pet.x, pet_y=self.pet.y,
+                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                    visible=True)
+
+            def stage2_finish(st):
+                # 阶段3：才艺展示（3分钟）
+                self.pet.current_activity = None
+                self.pet.current_activity = ActivityWindow(
+                    self.pet.pet_win, "🎤 才艺展示...", 180,
+                    lambda st2: stage3_finish(st2),
+                    lambda: None,
+                    pet_x=self.pet.x, pet_y=self.pet.y,
+                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                    visible=True)
+
+            def stage3_finish(st):
+                # 阶段4：镜头测试（2分钟）
+                self.pet.current_activity = None
+                self.pet.current_activity = ActivityWindow(
+                    self.pet.pet_win, "📸 镜头测试...", 120,
+                    lambda st2: stage4_finish(st2),
+                    lambda: None,
+                    pet_x=self.pet.x, pet_y=self.pet.y,
+                    pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                    visible=True)
+
+            def stage4_finish(st):
+                # 阶段5：即兴问答（弹出选择题）
+                self.pet.current_activity = None
+                self._interview_question(st)
+
+            # 启动阶段1
+            self.pet.current_activity = ActivityWindow(
+                self.pet.pet_win, "面试准备(" + label + ")...", 1800,  # 30分钟，测试可改为10
+                lambda st: stage1_finish(st),
+                lambda: None,
+                pet_x=self.pet.x, pet_y=self.pet.y,
+                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                visible=True)
 
         preps = [
             ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
@@ -254,45 +301,8 @@ class ActionManager:
             choice_win.destroy()
         choice_win.protocol("WM_DELETE_WINDOW", on_close)
 
-    def _start_interview_stages(self, state):
-        """进入面试的各个阶段（已合并准备，直接从等待叫号开始）"""
-        self.pet.current_activity_name = "面试中"
-
-        # 阶段1：等待叫号（8分钟）
-        def stage1_finish(st):
-            self.pet.current_activity = None
-            self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "🎤 才艺展示...", 180,
-                lambda st2: stage2_finish(st2),
-                lambda: None,
-                pet_x=self.pet.x, pet_y=self.pet.y,
-                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                visible=True)
-
-        def stage2_finish(st):
-            self.pet.current_activity = None
-            self.pet.current_activity = ActivityWindow(
-                self.pet.pet_win, "📸 镜头测试...", 120,
-                lambda st2: stage3_finish(st2),
-                lambda: None,
-                pet_x=self.pet.x, pet_y=self.pet.y,
-                pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-                visible=True)
-
-        def stage3_finish(st):
-            self.pet.current_activity = None
-            self._interview_question(st)
-
-        self.pet.current_activity = ActivityWindow(
-            self.pet.pet_win, "⏳ 等待叫号...", 480,
-            lambda st: stage1_finish(st),
-            lambda: None,
-            pet_x=self.pet.x, pet_y=self.pet.y,
-            pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
-            visible=True)
-
     def _interview_question(self, state):
-        """阶段4：即兴问答 - 弹出选择题"""
+        """阶段5：即兴问答 - 弹出选择题"""
         q_win = tk.Toplevel(self.pet.pet_win)
         q_win.overrideredirect(True)
         q_win.wm_attributes("-topmost", True)
@@ -315,7 +325,7 @@ class ActionManager:
         def answer(attr, val, msg):
             q_win.destroy()
             setattr(state, attr, getattr(state, attr) + val)
-            # 阶段5：结果等候（12分钟）
+            # 阶段6：结果等候（12分钟）
             self.pet.current_activity = ActivityWindow(
                 self.pet.pet_win, "📋 结果等候...", 720,
                 lambda st: self._interview_result(st),
@@ -362,7 +372,7 @@ class ActionManager:
         q_win.protocol("WM_DELETE_WINDOW", on_close)
 
     def _interview_result(self, state):
-        """阶段5结束后 → 阶段6：结果揭晓（3分钟）→ 最终判定"""
+        """阶段6结束后 → 阶段7：结果揭晓（3分钟）→ 最终判定"""
         self.pet.current_activity = None
         self.pet.current_activity = ActivityWindow(
             self.pet.pet_win, "📢 结果揭晓...", 180,
