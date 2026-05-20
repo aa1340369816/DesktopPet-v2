@@ -334,7 +334,6 @@ class DesktopPet:
         menu.add_cascade(label="🔲 缩放", menu=zoom_menu)
 
         menu.add_command(label="🎒 背包", command=self.status_panel_manager.show_inventory)
-        menu.add_command(label="🎒 奇遇背包", command=lambda: self.adventure_manager.show_bag(self.pet_win))
         if self.state.focus_mode:
             menu.add_command(label="🍅 结束专注", command=self.toggle_focus)
         else:
