@@ -173,6 +173,7 @@ class DesktopPet:
             tip_win.wm_attributes("-topmost", True)
             tip_win.configure(bg="#FFF8E1")
             tip_win.attributes("-alpha", 1.0)
+            tip_win.withdraw()   # 先隐藏，避免闪烁
 
             w, h = 360, 130
             pad = 20
@@ -186,30 +187,16 @@ class DesktopPet:
                      ).pack(pady=(12, 0))
             tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 12),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=24, pady=8, height=2,
+                      bd=1, relief="solid", padx=24, pady=12,
                       command=open_narrative).pack(pady=(12, pad))
 
-            def on_enter_click(e):
-                open_narrative()
-            def on_enter_enter(e):
-                enter_frame.configure(bg="#F5F5F5")
-                enter_label.configure(bg="#F5F5F5")
-            def on_enter_leave(e):
-                enter_frame.configure(bg="#FFFFFF")
-                enter_label.configure(bg="#FFFFFF")
-
-            enter_frame.bind("<Button-1>", on_enter_click)
-            enter_label.bind("<Button-1>", on_enter_click)
-            enter_frame.bind("<Enter>", on_enter_enter)
-            enter_frame.bind("<Leave>", on_enter_leave)
-            enter_label.bind("<Enter>", on_enter_enter)
-            enter_label.bind("<Leave>", on_enter_leave)
-
+            # 定位到宠物头顶
             x = self.x + (self.pet_w - w) // 2
             y = self.y - h - 12
             if y < 0:
                 y = self.y + self.pet_h + 12
             tip_win.geometry(f"{w}x{h}+{x}+{y}")
+            tip_win.deiconify()  # 现在显示
 
             def follow_tip():
                 if tip_win.winfo_exists():
@@ -220,7 +207,7 @@ class DesktopPet:
                     tip_win.geometry(f"+{nx}+{ny}")
                     tip_win.after(200, follow_tip)
             follow_tip()
-            return   # 直接返回，不创建 AdventureStageWindow
+            return
 
         # 普通剧情窗口（包括后续阶段）
         AdventureStageWindow(
