@@ -5,7 +5,7 @@ import random
 
 
 class AdventureStageWindow:
-    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后，高度固定）"""
+    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后，按钮固定在底部）"""
     def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h, is_trigger=False):
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
@@ -20,6 +20,7 @@ class AdventureStageWindow:
         self.options = options
         self.current_page = 0
 
+        # 分割文本
         raw_paragraphs = stage_text.split('\n')
         paragraphs = [p.strip() for p in raw_paragraphs if p.strip()]
         if not paragraphs:
@@ -37,23 +38,34 @@ class AdventureStageWindow:
                  fg="#000000", bg=bg_color).pack(pady=(self.pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=self.pad, pady=(8, 0))
 
-        # 内容区域
-        self.content_frame = tk.Frame(self.win, bg=bg_color)
-        self.content_frame.pack(pady=(12, 0), padx=self.pad, fill="x")
-        self.content_widgets = []
-
-        # 按钮区域
+        # ---- 关键：按钮区先固定到底部 ----
         self.btn_frame = tk.Frame(self.win, bg=bg_color)
-        self.btn_frame.pack(pady=12, padx=self.pad, fill="x")
+        self.btn_frame.pack(side="bottom", fill="x", padx=self.pad, pady=12)
+
+        # 内容区填充剩余空间
+        self.content_frame = tk.Frame(self.win, bg=bg_color)
+        self.content_frame.pack(side="top", fill="both", expand=True, padx=self.pad, pady=(12, 0))
+
+        self.content_widgets = []
 
         self.pet_x = pet_x
         self.pet_y = pet_y
         self.pet_w = pet_w
         self.pet_h = pet_h
 
-        # 固定窗口高度，杜绝按钮挤压
-        self.fixed_h = 420
+        # 动态计算窗口高度，确保按钮完全可见
         self._show_page(0)
+        self.win.update_idletasks()
+        # 内容区高度 + 按钮区高度 + 标题等
+        content_h = self.content_frame.winfo_reqheight()
+        btn_h = self.btn_frame.winfo_reqheight()
+        title_h = 70   # 标题+分隔线大约高度
+        self.fixed_h = content_h + btn_h + title_h + 40
+        if self.fixed_h < 280:
+            self.fixed_h = 280
+        if self.fixed_h > 620:
+            self.fixed_h = 620
+
         x = pet_x + (pet_w - self.w) // 2
         y = pet_y - self.fixed_h - 12
         if y < 0:
@@ -62,9 +74,11 @@ class AdventureStageWindow:
         self._follow()
 
     def _show_page(self, page_idx):
+        # 清空内容区
         for w in self.content_widgets:
             w.destroy()
         self.content_widgets.clear()
+        # 清空按钮区（只删按钮，btn_frame 本身不删）
         for w in self.btn_frame.winfo_children():
             w.destroy()
 
@@ -112,10 +126,6 @@ class AdventureStageWindow:
                       command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
-        # 强制固定尺寸，两次设置确保不会被布局覆盖
-        self.win.update_idletasks()
-        self.win.geometry(f"{self.w}x{self.fixed_h}")
-        self.win.after(50, lambda: self.win.geometry(f"{self.w}x{self.fixed_h}"))
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
@@ -152,7 +162,6 @@ class AdventureStageWindow:
             ny = self.pet_y - self.fixed_h - 12
             if ny < 0:
                 ny = self.pet_y + self.pet_h + 12
-            # 只更新位置，不改变尺寸
             self.win.geometry(f"+{nx}+{ny}")
             self.win.after(200, self._follow)
 
