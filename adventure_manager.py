@@ -92,54 +92,47 @@ class AdventureStageWindow:
                                anchor="w", justify="left", wraplength=320)
                 lbl.pack(fill="x", pady=1)
                 self.content_widgets.append(lbl)
+
+            # 文本页按钮区：继续 + 关闭
+            if page_idx < self.total_pages - 1:
+                next_btn = tk.Button(self.btn_frame, text="继续 ▶", font=("Segoe UI", 11),
+                                     fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                     bd=1, relief="solid", padx=12, pady=8, height=2,
+                                     command=self._next_page)
+                next_btn.pack(side="left", padx=4)
+            else:
+                # 最后一页是纯文本（没有选项），显示“结束”
+                end_btn = tk.Button(self.btn_frame, text="结束", font=("Segoe UI", 11),
+                                    fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                    bd=1, relief="solid", padx=12, pady=8, height=2,
+                                    command=self.win.destroy)
+                end_btn.pack(side="left", padx=4)
+
+            close_btn = tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 11),
+                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                                  bd=1, relief="solid", padx=12, pady=8, height=2,
+                                  command=self.win.destroy)
+            close_btn.pack(side="right", padx=4)
+
         else:
-            # 选项页：提示放在内容区，选项按钮移到按钮区
+            # 选项页：提示放在内容区，选项按钮放在按钮区
             tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
 
-            # 按钮区放置选项按钮 + 取消
             for i, opt_text in enumerate(self.options):
-                btn = tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 10),
+                btn = tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 11),
                                 fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                bd=1, relief="solid", padx=12, pady=8,
+                                bd=1, relief="solid", padx=12, pady=8, height=2,
                                 command=lambda idx=i: self._choose(idx))
                 btn.pack(fill="x", pady=4)
-            cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 10),
+
+            # 取消按钮
+            cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 11),
                                    fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                   bd=1, relief="solid", padx=12, pady=6,
+                                   bd=1, relief="solid", padx=12, pady=8, height=2,
                                    command=self.win.destroy)
             cancel_btn.pack(pady=(8, 0))
-
-        # 按钮区：翻页/结束/取消
-        if page_idx < self.total_pages - 1:
-            # 不是最后一页，显示“继续”和“关闭”
-            next_btn = tk.Button(self.btn_frame, text="继续 ▶", font=("Segoe UI", 10),
-                                 fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                 bd=1, relief="solid", padx=12, pady=6,
-                                 command=self._next_page)
-            next_btn.pack(side="left", padx=4)
-            close_btn = tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 10),
-                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                  bd=1, relief="solid", padx=12, pady=6,
-                                  command=self.win.destroy)
-            close_btn.pack(side="right", padx=4)
-        else:
-            # 最后一页：如果是选项页，已经有选择按钮，这里只放“取消”；否则放“结束”
-            if self.has_options:
-                # 选项页，加一个“取消”按钮
-                cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 10),
-                                       fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                       bd=1, relief="solid", padx=12, pady=6,
-                                       command=self.win.destroy)
-                cancel_btn.pack(side="right", padx=4)
-            else:
-                # 纯叙事结束
-                end_btn = tk.Button(self.btn_frame, text="结束", font=("Segoe UI", 10),
-                                    fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                    bd=1, relief="solid", padx=12, pady=6,
-                                    command=self.win.destroy)
-                end_btn.pack(side="right", padx=4)
 
         self.current_page = page_idx
 
