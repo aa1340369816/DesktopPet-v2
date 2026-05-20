@@ -461,6 +461,11 @@ class ActionManager:
         self.pet.event_scheduler.set_action(name)
         self.pet.current_activity_name = name
 
+        # 统一活动计数（所有通过 start_activity 启动的活动都会累加）
+        self.pet.state.activity_counts[name] = self.pet.state.activity_counts.get(name, 0) + 1
+
+        # ... 后续 on_finish、on_cancel 等保持不变
+
         def on_finish():
             effect_func(s)
             self.pet.anim_manager.switch_to_idle()
