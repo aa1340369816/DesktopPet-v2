@@ -1,6 +1,6 @@
 # adventure_manager.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import time
 import random
 
@@ -99,13 +99,13 @@ class AdventureStageWindow:
 
             tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=8,
+                      bd=1, relief="solid", padx=12, pady=14,
                       command=next_cmd).pack(side="left", padx=4)
 
-            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
-                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=8,
-                      command=next_cmd).pack(side="left", padx=4)
+            tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 12),
+                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=14,
+                      command=self.win.destroy).pack(side="right", padx=4)
 
         else:
             # ------ 选项页 ------
@@ -114,15 +114,15 @@ class AdventureStageWindow:
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
 
             for i, opt_text in enumerate(self.options):
-            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
-                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=8,
-                      command=next_cmd).pack(side="left", padx=4)
+                tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 12),
+                          fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                          bd=1, relief="solid", padx=12, pady=14,
+                          command=lambda idx=i: self._choose(idx)).pack(fill="x", pady=4)
 
-            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
-                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=8,
-                      command=next_cmd).pack(side="left", padx=4)
+            tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 12),
+                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=14,
+                      command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
         # 关键：翻页后立即更新窗口尺寸
@@ -406,7 +406,7 @@ class AdventureManager:
         pet.active_adventure_stage = None
         pet.pending_adventure_timer = None
 
-    # ---------- 背包 UI ----------
+# ---------- 背包 UI ----------
     def show_bag(self, parent):
         win = tk.Toplevel(parent)
         win.title("背包")
