@@ -469,6 +469,10 @@ class ActionManager:
         # ... 后续 on_finish、on_cancel 等保持不变
 
         def on_finish():
+            # 如果奇遇正在进行，延迟完成，等待奇遇结束
+            if hasattr(self.pet, 'adventure_manager') and self.pet.adventure_manager.state == "active":
+                self.pet.root.after(500, on_finish)
+                return
             effect_func(s)
             self.pet.anim_manager.switch_to_idle()
             self.pet.ui_manager.show_toast(f"✅ {name}完成")
