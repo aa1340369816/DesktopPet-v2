@@ -432,7 +432,7 @@ class AdventureManager:
         win = tk.Toplevel(parent)
         win.title("背包")
         win.configure(bg="white")
-        win.geometry("300x400")
+        win.geometry("340x400")                # 宽度稍微加大
         win.resizable(False, False)
 
         tk.Label(win, text="📦 普通物品", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(10,0))
@@ -453,12 +453,23 @@ class AdventureManager:
             for item in items:
                 row = tk.Frame(frame_adv, bg="white")
                 row.pack(fill="x", pady=2)
-                tk.Label(row, text=f"{item['name']}\n{item.get('desc', '')}", font=("Segoe UI", 9),
-                         bg="white", anchor="w", justify="left").pack(side="left")
+
+                # 左侧：名字 + 描述
+                info_frame = tk.Frame(row, bg="white")
+                info_frame.pack(side="left", fill="x", expand=True)
+
+                tk.Label(info_frame, text=item['name'], font=("Segoe UI", 10, "bold"),
+                         fg="black", bg="white", anchor="w").pack(anchor="w")
+                desc = item.get('desc', '')
+                tk.Label(info_frame, text=desc, font=("Segoe UI", 9),
+                         fg="gray", bg="white", anchor="w", justify="left",
+                         wraplength=200).pack(anchor="w")
+
+                # 右侧：使用按钮
                 if item.get("usable", False):
-                    tk.Button(row, text="使用", font=("Segoe UI", 10),
-                              bg="white", fg="black", padx=8, pady=2,
-                              command=lambda i=item: self._use_item(i, win)).pack(side="right")
+                    tk.Button(row, text="使用", font=("Segoe UI", 9),
+                              bg="white", fg="black", padx=6, pady=2,
+                              command=lambda i=item: self._use_item(i, win)).pack(side="right", padx=(8,0))
         else:
             tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
