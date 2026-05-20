@@ -171,7 +171,8 @@ class AdventureManager:
             "adventure_name": adv["name"],
             "stage_text": stage["text"],
             "options": [opt["text"] for opt in stage.get("options", [])],
-            "location": stage.get("location", adv.get("location", ""))
+            "location": stage.get("location", adv.get("location", "")),
+            "is_entry": is_entry          # 新增，标记是否是奇遇入口
         }
 
     def check_item_trigger(self, item_id):
