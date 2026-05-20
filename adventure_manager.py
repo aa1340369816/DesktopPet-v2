@@ -167,8 +167,9 @@ class AdventureStageWindow:
 
 
 class AdventureManager:
-    def __init__(self, pet_state):
+    def __init__(self, pet_state, pet=None):
         self.pet_state = pet_state
+        self.pet = pet
         self.state = "idle"
         self.current_adventure_id = None
         self.current_stage_id = None
@@ -461,6 +462,15 @@ class AdventureManager:
             tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
     def _use_item(self, item, bag_window):
+        # 检查是否正在进行其他活动
+        if self.pet and self.pet.current_activity_name:
+            messagebox.showinfo("提示", "你正在活动中，无法使用奇遇道具", parent=bag_window)
+            return
+        # 检查是否有奇遇正在进行
+        if self.state == "active":
+            messagebox.showinfo("提示", "奇遇进行中，无法使用道具", parent=bag_window)
+            return
+
         result = self.check_item_trigger(item["id"])
         if result:
             bag_window.destroy()
