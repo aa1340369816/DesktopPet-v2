@@ -5,44 +5,83 @@ import time
 import random
 
 class AdventureStageWindow:
-    """奇遇叙事窗口（极简白底黑字，自适应高度）"""
-    def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h):
+    """奇遇叙事窗口（极简白底黑字，分页显示，触发时特殊样式）"""
+    def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h, is_trigger=False):
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
-        self.win.configure(bg="#FFFFFF")
+        # 触发时使用浅金色背景，否则纯白
+        bg_color = "#FFF8E1" if is_trigger else "#FFFFFF"
+        self.win.configure(bg=bg_color)
         self.win.attributes("-alpha", 1.0)
 
-        w = 360
+        w = 380
         pad = 20
+        self.callback = callback
+        self.options = options
+        self.current_page = 0
+
+        # 将文本按 \n 分割成行，每 6 行一页
+        lines = stage_text.split('\n')
+        pages = []
+        for i in range(0, len(lines), 6):
+            pages.append(lines[i:i+6])
+        if not pages:
+            pages = [[""]]
+        self.pages = pages
+        self.total_pages = len(pages)
 
         # 标题
-        tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
-                 fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        title_prefix = "✨ 奇遇触发 · " if is_trigger else ""
+        title_text = title_prefix + adventure_name
+        tk.Label(self.win, text=title_text, font=("Segoe UI", 12, "bold"),
+                 fg="#000000", bg=bg_color).pack(pady=(pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        # 文本
-        text_label = tk.Label(self.win, text=stage_text, font=("Segoe UI", 10),
-                              fg="#404040", bg="#FFFFFF", wraplength=320, justify="left")
-        text_label.pack(pady=(12, 0), padx=pad)
+        # 文本显示区域（根据行数动态高度）
+        self.text_frame = tk.Frame(self.win, bg=bg_color)
+        self.text_frame.pack(pady=(12, 0), padx=pad, fill="x")
+        self.text_labels = []  # 存储当前页的 Label，用于更新
 
-        # 选项按钮
-        btn_frame = tk.Frame(self.win, bg="#FFFFFF")
+        # 按钮框架
+        btn_frame = tk.Frame(self.win, bg=bg_color)
         btn_frame.pack(pady=12, padx=pad, fill="x")
 
-        for i, opt_text in enumerate(options):
-            btn = tk.Button(btn_frame, text=opt_text, font=("Segoe UI", 10),
-                            fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                            bd=1, relief="solid", padx=12, pady=8,
-                            command=lambda idx=i: self._choose(idx, callback))
-            btn.pack(fill="x", pady=4)
+        # 如果有选项，显示选项按钮；否则如果有多页，显示“继续”按钮；否则只显示关闭
+        if options:
+            # 选项模式（通常只有一页）
+            for i, opt_text in enumerate(options):
+                btn = tk.Button(btn_frame, text=opt_text, font=("Segoe UI", 10),
+                                fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                bd=1, relief="solid", padx=12, pady=8,
+                                command=lambda idx=i: self._choose(idx))
+                btn.pack(fill="x", pady=4)
+        else:
+            # 无选项，可能是纯叙事或分页
+            if self.total_pages > 1:
+                # 继续按钮
+                self.next_btn = tk.Button(btn_frame, text="继续 ▶", font=("Segoe UI", 10),
+                                          fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                          bd=1, relief="solid", padx=12, pady=8,
+                                          command=self._next_page)
+                self.next_btn.pack(side="left", padx=4)
+            # 关闭按钮
+            close_btn = tk.Button(btn_frame, text="关闭", font=("Segoe UI", 10),
+                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                                  bd=1, relief="solid", padx=12, pady=8,
+                                  command=self.win.destroy)
+            close_btn.pack(side="right", padx=4) if self.total_pages > 1 else close_btn.pack()
 
+        # 显示第一页
+        self._show_page(0)
+
+        # 计算窗口高度
         self.win.update_idletasks()
         h = self.win.winfo_reqheight()
         if h < 200:
             h = 200
-        if h > 500:
-            h = 500
+        if h > 600:
+            h = 600
 
         x = pet_x + (pet_w - w) // 2
         y = pet_y - h - 12
@@ -51,20 +90,52 @@ class AdventureStageWindow:
         self.win.geometry(f"{w}x{h}+{x}+{y}")
 
         # 跟随宠物移动
-        def update_position():
-            if self.win.winfo_exists():
-                nx = pet_x + (pet_w - w) // 2
-                ny = pet_y - h - 12
-                if ny < 0:
-                    ny = pet_y + pet_h + 12
-                self.win.geometry(f"+{nx}+{ny}")
-                self.win.after(200, update_position)
-        update_position()
+        self.pet_x = pet_x
+        self.pet_y = pet_y
+        self.pet_w = pet_w
+        self.pet_h = pet_h
+        self._follow()
 
-    def _choose(self, idx, callback):
+    def _show_page(self, page_idx):
+        """显示指定页的文本"""
+        for label in self.text_labels:
+            label.destroy()
+        self.text_labels.clear()
+
+        page_lines = self.pages[page_idx]
+        for line in page_lines:
+            lbl = tk.Label(self.text_frame, text=line, font=("Segoe UI", 10),
+                           fg="#404040", bg=self.win.cget("bg"), anchor="w", justify="left")
+            lbl.pack(fill="x", pady=1)
+            self.text_labels.append(lbl)
+
+        self.current_page = page_idx
+        # 如果有多页，更新继续按钮状态
+        if hasattr(self, 'next_btn'):
+            if page_idx >= self.total_pages - 1:
+                self.next_btn.config(text="结束", command=self.win.destroy)
+            else:
+                self.next_btn.config(text="继续 ▶", command=self._next_page)
+
+    def _next_page(self):
+        if self.current_page < self.total_pages - 1:
+            self._show_page(self.current_page + 1)
+        else:
+            self.win.destroy()
+
+    def _choose(self, idx):
         self.win.destroy()
-        if callback:
-            callback(idx)
+        if self.callback:
+            self.callback(idx)
+
+    def _follow(self):
+        if self.win.winfo_exists():
+            nx = self.pet_x + (self.pet_w - 380) // 2
+            ny = self.pet_y - self.win.winfo_reqheight() - 12
+            if ny < 0:
+                ny = self.pet_y + self.pet_h + 12
+            self.win.geometry(f"+{nx}+{ny}")
+            self.win.after(200, self._follow)
 
 
 class AdventureManager:
