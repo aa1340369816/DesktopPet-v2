@@ -72,7 +72,7 @@ class DesktopPet:
         self.companion_manager = CompanionManager(self)
 
         # 奇遇管理器
-        self.adventure_manager = AdventureManager(self.state)
+        self.adventure_manager = AdventureManager(self.state, pet=self)
         self.adventure_manager.set_stage_callback(self.show_adventure_stage)
 
         # 缓存与启动
