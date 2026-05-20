@@ -411,22 +411,36 @@ class AdventureManager:
         win = tk.Toplevel(parent)
         win.title("背包")
         win.configure(bg="white")
-        win.geometry("300x200")
+        win.geometry("300x400")
         win.resizable(False, False)
 
-        items = self.pet_state.adventure_items
-        if not items:
-            tk.Label(win, text="背包空空如也", bg="white", fg="gray").pack(pady=20)
-            return
+        # 普通物品
+        tk.Label(win, text="📦 普通物品", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(10,0))
+        inv = self.pet_state.inventory
+        if inv:
+            frame_inv = tk.Frame(win, bg="white")
+            frame_inv.pack(fill="x", padx=10, pady=2)
+            for name, qty in inv.items():
+                tk.Label(frame_inv, text=f"{name} x{qty}", font=("Segoe UI", 10), bg="white", anchor="w").pack(fill="x", pady=1)
+        else:
+            tk.Label(win, text="（空）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
-        for item in items:
-            frame = tk.Frame(win, bg="white")
-            frame.pack(fill="x", padx=10, pady=2)
-            tk.Label(frame, text=f"{item['name']}", bg="white", anchor="w").pack(side="left")
-            if item.get("usable", False):
-                btn = tk.Button(frame, text="使用", bg="white", fg="black",
-                                command=lambda i=item: self._use_item(i, win))
-                btn.pack(side="right")
+        # 奇遇道具
+        tk.Label(win, text="✨ 奇遇道具", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(12,0))
+        items = self.pet_state.adventure_items
+        if items:
+            frame_adv = tk.Frame(win, bg="white")
+            frame_adv.pack(fill="x", padx=10, pady=2)
+            for item in items:
+                row = tk.Frame(frame_adv, bg="white")
+                row.pack(fill="x", pady=2)
+                tk.Label(row, text=f"{item['name']}", font=("Segoe UI", 10), bg="white", anchor="w").pack(side="left")
+                if item.get("usable", False):
+                    tk.Button(row, text="使用", font=("Segoe UI", 10),
+                              bg="white", fg="black", padx=8, pady=2,
+                              command=lambda i=item: self._use_item(i, win)).pack(side="right")
+        else:
+            tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
     def _use_item(self, item, bag_window):
         result = self.check_item_trigger(item["id"])
