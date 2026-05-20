@@ -32,14 +32,17 @@ class AdventureStageWindow:
         self.has_options = bool(options)
         self.total_pages = len(self.text_pages) + (1 if self.has_options else 0)
 
+        # 标题
         tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg=bg_color).pack(pady=(self.pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=self.pad, pady=(8, 0))
 
+        # 内容区域
         self.content_frame = tk.Frame(self.win, bg=bg_color)
         self.content_frame.pack(pady=(12, 0), padx=self.pad, fill="x")
         self.content_widgets = []
 
+        # 按钮区域
         self.btn_frame = tk.Frame(self.win, bg=bg_color)
         self.btn_frame.pack(pady=12, padx=self.pad, fill="x")
 
@@ -48,6 +51,7 @@ class AdventureStageWindow:
         self.pet_w = pet_w
         self.pet_h = pet_h
 
+        # 固定窗口高度，杜绝按钮挤压
         self.fixed_h = 420
         self._show_page(0)
         x = pet_x + (pet_w - self.w) // 2
@@ -65,6 +69,7 @@ class AdventureStageWindow:
             w.destroy()
 
         if page_idx < len(self.text_pages):
+            # 文本页
             for paragraph in self.text_pages[page_idx]:
                 lbl = tk.Label(self.content_frame, text=paragraph, font=("Segoe UI", 10),
                                fg="#404040", bg=self.win.cget("bg"),
@@ -88,7 +93,9 @@ class AdventureStageWindow:
                       fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
                       bd=1, relief="solid", padx=12, pady=14,
                       command=self.win.destroy).pack(side="right", padx=4)
+
         else:
+            # 选项页
             tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
@@ -147,9 +154,6 @@ class AdventureStageWindow:
             self.win.geometry(f"+{nx}+{ny}")
             self.win.after(200, self._follow)
 
-
-class AdventureManager:
-    # …… AdventureManager 类保持不变，你之前收到的完整版即可，此处省略以节省篇幅 ……
 
 class AdventureManager:
     def __init__(self, pet_state):
@@ -220,6 +224,7 @@ class AdventureManager:
                 else:
                     return None
 
+        # idle 状态检查入口
         candidates = []
         for adv_id, adv in self.adventure_pool.items():
             if adv_id in pet.adventure_history:
