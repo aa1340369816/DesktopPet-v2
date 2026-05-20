@@ -112,8 +112,10 @@ class AdventureStageWindow:
                       command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
-        # 强制固定尺寸，防止布局变化导致按钮消失
+        # 强制固定尺寸，两次设置确保不会被布局覆盖
+        self.win.update_idletasks()
         self.win.geometry(f"{self.w}x{self.fixed_h}")
+        self.win.after(50, lambda: self.win.geometry(f"{self.w}x{self.fixed_h}"))
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
