@@ -13,7 +13,7 @@ ADVENTURES = [
             "activity": "便利店兼职",
             "activity_count_min": 3
         },
-        "base_probability": 0.03,
+        "base_probability": 0.3,
         "stages": {
             "ch1": {
                 "text": texts.ADVENTURE_TEXTS["starscout"]["ch1"]["text"],
