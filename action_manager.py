@@ -37,7 +37,7 @@ class ActionManager:
                 self.cancel_current_activity()
 
         if job == "便利店兼职":
-            self.pet.anim_manager.play_action_animation(job)   # job 即 "便利店兼职"            duration = 3600
+            self.pet.anim_manager.play_action_animation(job)   # job 即 "便利店兼职"            duration = 10
             def effect(state):
                 state.gold += 20
                 state.satiety = max(0, state.satiety - 8)
