@@ -173,9 +173,9 @@ class DesktopPet:
             tip_win.wm_attributes("-topmost", True)
             tip_win.configure(bg="#FFF8E1")
             tip_win.attributes("-alpha", 1.0)
-            tip_win.withdraw()   # 先隐藏，避免闪烁
+            tip_win.withdraw()
 
-            w, h = 360, 130
+            w = 360
             pad = 20
 
             tk.Label(tip_win, text=f"✨ 奇遇触发 · {stage_data['adventure_name']}",
@@ -190,13 +190,15 @@ class DesktopPet:
                       bd=1, relief="solid", padx=24, pady=12, height=2,
                       command=open_narrative).pack(pady=(12, pad))
 
-            # 定位到宠物头顶
+            # 动态计算窗口所需高度
+            tip_win.update_idletasks()
+            h = tip_win.winfo_reqheight()
             x = self.x + (self.pet_w - w) // 2
             y = self.y - h - 12
             if y < 0:
                 y = self.y + self.pet_h + 12
             tip_win.geometry(f"{w}x{h}+{x}+{y}")
-            tip_win.deiconify()  # 现在显示
+            tip_win.deiconify()
 
             def follow_tip():
                 if tip_win.winfo_exists():
