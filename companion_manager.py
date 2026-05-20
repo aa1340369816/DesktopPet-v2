@@ -13,6 +13,9 @@ class CompanionManager:
         idle = ActivityMonitor.get_idle_seconds()
         s.idle_time = idle
         s.total_playtime += 1
+        if s.last_milestone_week and s.last_milestone_day:  # 占位，实际纪念已移除
+            pass
+
         if s.focus_mode and now > s.focus_end_time:
             s.focus_mode = False
             self.pet.ui_manager.show_toast("🍅 专注时间结束！", 3000)
@@ -33,6 +36,14 @@ class CompanionManager:
         self.check_daytime_greeting(now)
 
         self.pet.event_scheduler.update(self.pet.pet_win)
+
+        # 奇遇系统检查
+        if hasattr(self.pet, 'adventure_manager'):
+            current_activity = self.pet.current_activity_name or ""
+            stage_data = self.pet.adventure_manager.check_trigger(now, current_activity)
+            if stage_data:
+                self.pet.show_adventure_stage(stage_data)
+
         self.pet.root.after(1000, self.companion_loop)
 
     def check_daytime_greeting(self, now):
