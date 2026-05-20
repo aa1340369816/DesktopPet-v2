@@ -80,6 +80,19 @@ class PetState:
 
         self.event_cooldowns = {}
 
+        # 奇遇系统新增属性
+        self.flags = set()
+        self.traits = set()
+        self.adventure_items = []
+        self.adventure_history = []
+        self.adventure_log = []
+        self.active_adventure_id = None
+        self.active_adventure_stage = None
+        self.pending_adventure_timer = None
+        self.unlocked_jobs = []
+        self.unlocked_events = []
+        self.activity_counts = {}
+
     @property
     def pet_w(self):
         return int(self.base_w * self.scale)
@@ -100,22 +113,19 @@ class PetState:
         # 每小时衰减一次（基于真实时间）
         if not hasattr(self, '_last_decay_ts'):
             self._last_decay_ts = time.time()
-        if time.time() - self._last_decay_ts < 3600:  # 3600秒 = 1小时
+        if time.time() - self._last_decay_ts < 3600:
             return
         self._last_decay_ts = time.time()
 
-        # 自然消耗
-        self.satiety = max(0, self.satiety - 5)       # 饱食 -5/小时
-        self.hygiene = max(0, self.hygiene - 3)       # 清洁 -3/小时
-        self.mood = max(0, self.mood - 2 * (1 - self.mood_decay_reduce))  # 心情 -2/小时
+        self.satiety = max(0, self.satiety - 5)
+        self.hygiene = max(0, self.hygiene - 3)
+        self.mood = max(0, self.mood - 2 * (1 - self.mood_decay_reduce))
 
-        # 生病判断
         if self.hygiene < 30 and random.random() < 0.15:
             self.sick = True
         if self.health < 20 and random.random() < 0.3:
             self.sick = True
 
-        # 体力耗尽强制休息
         if self.stamina <= 0 and not self.resting:
             self.resting = True
             self.bubble_msg = "体力耗尽，必须休息！"
@@ -131,8 +141,6 @@ class PetState:
             self.bubble_timer -= 1
         else:
             self.bubble_msg = ""
-
-        self.check_promotion()
         self.check_promotion()
 
     def feed(self, satiety_amt=20, stamina_amt=0, mood_amt=0):
@@ -302,6 +310,46 @@ class PetState:
             self.level += 1
             self.exp_to_next = int(self.exp_to_next * 1.5)
 
+    # ================== 奇遇系统方法 ==================
+    def set_flag(self, flag):
+        self.flags.add(flag)
+
+    def remove_flag(self, flag):
+        self.flags.discard(flag)
+
+    def has_flag(self, flag):
+        return flag in self.flags
+
+    def add_trait(self, trait):
+        self.traits.add(trait)
+
+    def remove_trait(self, trait):
+        self.traits.discard(trait)
+
+    def has_trait(self, trait):
+        return trait in self.traits
+
+    def add_adventure_item(self, item_dict):
+        for i in self.adventure_items:
+            if i["id"] == item_dict["id"]:
+                i.update(item_dict)
+                return
+        self.adventure_items.append(item_dict)
+
+    def update_adventure_item(self, item_id, new_desc):
+        for i in self.adventure_items:
+            if i["id"] == item_id:
+                i["desc"] = new_desc
+                break
+
+    def unlock_job(self, job_name):
+        if job_name not in self.unlocked_jobs:
+            self.unlocked_jobs.append(job_name)
+
+    def unlock_event(self, event_name):
+        if event_name not in self.unlocked_events:
+            self.unlocked_events.append(event_name)
+
     def to_dict(self):
         return {
             'satiety': self.satiety, 'stamina': self.stamina, 'hygiene': self.hygiene,
@@ -320,7 +368,19 @@ class PetState:
             'last_milestone_day': self.last_milestone_day,
             'inventory': self.inventory,
             'scale': self.scale,
-            'event_cooldowns': self.event_cooldowns
+            'event_cooldowns': self.event_cooldowns,
+            # 奇遇系统存档
+            'flags': list(self.flags),
+            'traits': list(self.traits),
+            'adventure_items': self.adventure_items,
+            'adventure_history': self.adventure_history,
+            'adventure_log': self.adventure_log,
+            'active_adventure_id': self.active_adventure_id,
+            'active_adventure_stage': self.active_adventure_stage,
+            'pending_adventure_timer': self.pending_adventure_timer,
+            'unlocked_jobs': self.unlocked_jobs,
+            'unlocked_events': self.unlocked_events,
+            'activity_counts': self.activity_counts
         }
 
     def from_dict(self, d):
@@ -356,6 +416,18 @@ class PetState:
         self.inventory = d.get('inventory', {})
         self.scale = d.get('scale', 1.5)
         self.event_cooldowns = d.get('event_cooldowns', {})
+        # 奇遇系统读档
+        self.flags = set(d.get('flags', []))
+        self.traits = set(d.get('traits', []))
+        self.adventure_items = d.get('adventure_items', [])
+        self.adventure_history = d.get('adventure_history', [])
+        self.adventure_log = d.get('adventure_log', [])
+        self.active_adventure_id = d.get('active_adventure_id', None)
+        self.active_adventure_stage = d.get('active_adventure_stage', None)
+        self.pending_adventure_timer = d.get('pending_adventure_timer', None)
+        self.unlocked_jobs = d.get('unlocked_jobs', [])
+        self.unlocked_events = d.get('unlocked_events', [])
+        self.activity_counts = d.get('activity_counts', {})
 
     def save(self):
         try:
