@@ -184,9 +184,9 @@ class DesktopPet:
             tk.Label(tip_win, text="一段不寻常的遭遇正在发生……",
                      font=("Segoe UI", 10), fg="#404040", bg="#FFF8E1"
                      ).pack(pady=(12, 0))
-            tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 10),
+            tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 11),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=10,
+                      bd=1, relief="solid", padx=12, pady=10, height=2,
                       command=open_narrative).pack(pady=(12, pad))
 
             x = self.x + (self.pet_w - w) // 2
