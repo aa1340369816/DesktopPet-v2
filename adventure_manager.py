@@ -5,7 +5,7 @@ import time
 import random
 
 class AdventureStageWindow:
-    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后）"""
+    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后，高度自适应）"""
     def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h, is_trigger=False):
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
@@ -14,8 +14,8 @@ class AdventureStageWindow:
         self.win.configure(bg=bg_color)
         self.win.attributes("-alpha", 1.0)
 
-        w = 400
-        pad = 20
+        self.w = 400
+        self.pad = 20
         self.callback = callback
         self.options = options
         self.current_page = 0
@@ -35,39 +35,42 @@ class AdventureStageWindow:
 
         # 标题
         tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
-                 fg="#000000", bg=bg_color).pack(pady=(pad, 0))
-        tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+                 fg="#000000", bg=bg_color).pack(pady=(self.pad, 0))
+        tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=self.pad, pady=(8, 0))
 
         # 内容区域
         self.content_frame = tk.Frame(self.win, bg=bg_color)
-        self.content_frame.pack(pady=(12, 0), padx=pad, fill="x")
+        self.content_frame.pack(pady=(12, 0), padx=self.pad, fill="x")
         self.content_widgets = []
 
         # 按钮区域
         self.btn_frame = tk.Frame(self.win, bg=bg_color)
-        self.btn_frame.pack(pady=12, padx=pad, fill="x")
+        self.btn_frame.pack(pady=12, padx=self.pad, fill="x")
 
+        # 保存宠物坐标，供后续重新定位
+        self.pet_x = pet_x
+        self.pet_y = pet_y
+        self.pet_w = pet_w
+        self.pet_h = pet_h
+
+        # 显示第一页，并立即更新尺寸
         self._show_page(0)
+        self._update_geometry()
+        self._follow()
 
-        # 动态高度
+    def _update_geometry(self):
+        """根据当前内容重新计算窗口大小并移动到宠物头顶"""
         self.win.update_idletasks()
         h = self.win.winfo_reqheight()
         if h < 220:
             h = 220
         if h > 620:
             h = 620
-
-        x = pet_x + (pet_w - w) // 2
-        y = pet_y - h - 12
+        x = self.pet_x + (self.pet_w - self.w) // 2
+        y = self.pet_y - h - 12
         if y < 0:
-            y = pet_y + pet_h + 12
-        self.win.geometry(f"{w}x{h}+{x}+{y}")
-
-        self.pet_x = pet_x
-        self.pet_y = pet_y
-        self.pet_w = pet_w
-        self.pet_h = pet_h
-        self._follow()
+            y = self.pet_y + self.pet_h + 12
+        self.win.geometry(f"{self.w}x{h}+{x}+{y}")
 
     def _show_page(self, page_idx):
         # 清空内容
@@ -94,14 +97,14 @@ class AdventureStageWindow:
                 next_text = "结束"
                 next_cmd = self.win.destroy
 
-            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 11),
+            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=12,
+                      bd=1, relief="solid", padx=12, pady=14,
                       command=next_cmd).pack(side="left", padx=4)
 
-            tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 11),
+            tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 12),
                       fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=12,
+                      bd=1, relief="solid", padx=12, pady=14,
                       command=self.win.destroy).pack(side="right", padx=4)
 
         else:
@@ -111,17 +114,19 @@ class AdventureStageWindow:
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
 
             for i, opt_text in enumerate(self.options):
-                tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 11),
+                tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 12),
                           fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                          bd=1, relief="solid", padx=12, pady=12,
+                          bd=1, relief="solid", padx=12, pady=14,
                           command=lambda idx=i: self._choose(idx)).pack(fill="x", pady=4)
 
-            tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 11),
+            tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 12),
                       fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=12,
+                      bd=1, relief="solid", padx=12, pady=14,
                       command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
+        # 关键：翻页后立即更新窗口尺寸
+        self._update_geometry()
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
@@ -136,11 +141,7 @@ class AdventureStageWindow:
 
     def _follow(self):
         if self.win.winfo_exists():
-            nx = self.pet_x + (self.pet_w - 400) // 2
-            ny = self.pet_y - self.win.winfo_reqheight() - 12
-            if ny < 0:
-                ny = self.pet_y + self.pet_h + 12
-            self.win.geometry(f"+{nx}+{ny}")
+            self._update_geometry()
             self.win.after(200, self._follow)
 
 
