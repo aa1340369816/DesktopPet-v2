@@ -14,24 +14,22 @@ class AdventureStageWindow:
         self.win.configure(bg=bg_color)
         self.win.attributes("-alpha", 1.0)
 
-        w = 380
+        w = 400
         pad = 20
         self.callback = callback
         self.options = options
         self.current_page = 0
 
-        # 将文本按 \n 分割，过滤空行
-        raw_lines = stage_text.split('\n')
-        lines = [line.strip() for line in raw_lines if line.strip()]
-        if not lines:
-            lines = ["（剧情缺失）"]
+        # 按 \n 分割原始文本，每 6 个非空段落为一页
+        raw_paragraphs = stage_text.split('\n')
+        paragraphs = [p.strip() for p in raw_paragraphs if p.strip()]
+        if not paragraphs:
+            paragraphs = ["（剧情缺失）"]
 
-        # 每 6 行一页（文本页），最后如果还有选项，再加一页选项页
         self.text_pages = []
-        for i in range(0, len(lines), 6):
-            self.text_pages.append(lines[i:i+6])
+        for i in range(0, len(paragraphs), 6):
+            self.text_pages.append(paragraphs[i:i+6])
 
-        # 总页数 = 文本页数 +（有选项时多一页选项页）
         self.has_options = bool(options)
         self.total_pages = len(self.text_pages) + (1 if self.has_options else 0)
 
@@ -40,25 +38,24 @@ class AdventureStageWindow:
                  fg="#000000", bg=bg_color).pack(pady=(pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        # 文本/选项显示区域
+        # 内容区域
         self.content_frame = tk.Frame(self.win, bg=bg_color)
         self.content_frame.pack(pady=(12, 0), padx=pad, fill="x")
         self.content_widgets = []
 
-        # 按钮框架
+        # 按钮区域
         self.btn_frame = tk.Frame(self.win, bg=bg_color)
         self.btn_frame.pack(pady=12, padx=pad, fill="x")
 
-        # 显示第一页
         self._show_page(0)
 
-        # 计算高度
+        # 动态高度
         self.win.update_idletasks()
         h = self.win.winfo_reqheight()
-        if h < 200:
-            h = 200
-        if h > 600:
-            h = 600
+        if h < 220:
+            h = 220
+        if h > 620:
+            h = 620
 
         x = pet_x + (pet_w - w) // 2
         y = pet_y - h - 12
@@ -73,66 +70,56 @@ class AdventureStageWindow:
         self._follow()
 
     def _show_page(self, page_idx):
-        # 清空内容区
-        for widget in self.content_widgets:
-            widget.destroy()
+        # 清空内容
+        for w in self.content_widgets:
+            w.destroy()
         self.content_widgets.clear()
+        for w in self.btn_frame.winfo_children():
+            w.destroy()
 
-        # 清空按钮区
-        for widget in self.btn_frame.winfo_children():
-            widget.destroy()
-
-        # 判断页面类型
         if page_idx < len(self.text_pages):
-            # 文本页
-            lines = self.text_pages[page_idx]
-            for line in lines:
-                lbl = tk.Label(self.content_frame, text=line, font=("Segoe UI", 10),
+            # ------ 文本页 ------
+            for paragraph in self.text_pages[page_idx]:
+                lbl = tk.Label(self.content_frame, text=paragraph, font=("Segoe UI", 10),
                                fg="#404040", bg=self.win.cget("bg"),
-                               anchor="w", justify="left", wraplength=320)
-                lbl.pack(fill="x", pady=1)
+                               anchor="w", justify="left", wraplength=360)
+                lbl.pack(fill="x", pady=2)
                 self.content_widgets.append(lbl)
 
-            # 文本页按钮区：继续 + 关闭
+            # 翻页 / 结束
             if page_idx < self.total_pages - 1:
-                next_btn = tk.Button(self.btn_frame, text="继续 ▶", font=("Segoe UI", 11),
-                                     fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                     bd=1, relief="solid", padx=12, pady=8, height=2,
-                                     command=self._next_page)
-                next_btn.pack(side="left", padx=4)
+                next_text = "继续 ▶"
+                next_cmd = self._next_page
             else:
-                # 最后一页是纯文本（没有选项），显示“结束”
-                end_btn = tk.Button(self.btn_frame, text="结束", font=("Segoe UI", 11),
-                                    fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                    bd=1, relief="solid", padx=12, pady=8, height=2,
-                                    command=self.win.destroy)
-                end_btn.pack(side="left", padx=4)
+                next_text = "结束"
+                next_cmd = self.win.destroy
 
-            close_btn = tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 11),
-                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                  bd=1, relief="solid", padx=12, pady=8, height=2,
-                                  command=self.win.destroy)
-            close_btn.pack(side="right", padx=4)
+            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 11),
+                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=12,
+                      command=next_cmd).pack(side="left", padx=4)
+
+            tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 11),
+                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=12,
+                      command=self.win.destroy).pack(side="right", padx=4)
 
         else:
-            # 选项页：提示放在内容区，选项按钮放在按钮区
+            # ------ 选项页 ------
             tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
 
             for i, opt_text in enumerate(self.options):
-                btn = tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 11),
-                                fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                bd=1, relief="solid", padx=12, pady=8, height=2,
-                                command=lambda idx=i: self._choose(idx))
-                btn.pack(fill="x", pady=4)
+                tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 11),
+                          fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                          bd=1, relief="solid", padx=12, pady=12,
+                          command=lambda idx=i: self._choose(idx)).pack(fill="x", pady=4)
 
-            # 取消按钮
-            cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 11),
-                                   fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                   bd=1, relief="solid", padx=12, pady=8, height=2,
-                                   command=self.win.destroy)
-            cancel_btn.pack(pady=(8, 0))
+            tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 11),
+                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=12,
+                      command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
 
@@ -149,7 +136,7 @@ class AdventureStageWindow:
 
     def _follow(self):
         if self.win.winfo_exists():
-            nx = self.pet_x + (self.pet_w - 380) // 2
+            nx = self.pet_x + (self.pet_w - 400) // 2
             ny = self.pet_y - self.win.winfo_reqheight() - 12
             if ny < 0:
                 ny = self.pet_y + self.pet_h + 12
