@@ -105,6 +105,8 @@ class AdventureStageWindow:
                       command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
+        # 强制固定尺寸，防止布局变化导致按钮消失
+        self.win.geometry(f"{self.w}x{self.fixed_h}")
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
@@ -141,9 +143,13 @@ class AdventureStageWindow:
             ny = self.pet_y - self.fixed_h - 12
             if ny < 0:
                 ny = self.pet_y + self.pet_h + 12
+            # 只更新位置，不改变尺寸
             self.win.geometry(f"+{nx}+{ny}")
             self.win.after(200, self._follow)
 
+
+class AdventureManager:
+    # …… AdventureManager 类保持不变，你之前收到的完整版即可，此处省略以节省篇幅 ……
 
 class AdventureManager:
     def __init__(self, pet_state):
