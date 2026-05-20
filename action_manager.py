@@ -1,478 +1,553 @@
-import tkinter as tk
-from tkinter import messagebox
-import time
 import random
+import time
+import tkinter as tk
+import tkinter.messagebox as messagebox
+from activity_window import ActivityWindow
+from performance_window import PerformanceWindow
 
 
-class AdventureStageWindow:
-    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后，按钮固定在底部）"""
-    def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h, is_trigger=False):
-        self.win = tk.Toplevel(parent)
-        self.win.overrideredirect(True)
-        self.win.wm_attributes("-topmost", True)
-        bg_color = "#FFF8E1" if is_trigger else "#FFFFFF"
-        self.win.configure(bg=bg_color)
-        self.win.attributes("-alpha", 1.0)
-
-        self.w = 400
-        self.pad = 20
-        self.callback = callback
-        self.options = options
-        self.current_page = 0
-
-        raw_paragraphs = stage_text.split('\n')
-        paragraphs = [p.strip() for p in raw_paragraphs if p.strip()]
-        if not paragraphs:
-            paragraphs = ["（剧情缺失）"]
-
-        self.text_pages = []
-        for i in range(0, len(paragraphs), 6):
-            self.text_pages.append(paragraphs[i:i+6])
-
-        self.has_options = bool(options)
-        self.total_pages = len(self.text_pages) + (1 if self.has_options else 0)
-
-        tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
-                 fg="#000000", bg=bg_color).pack(pady=(self.pad, 0))
-        tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=self.pad, pady=(8, 0))
-
-        # 按钮区固定在底部
-        self.btn_frame = tk.Frame(self.win, bg=bg_color)
-        self.btn_frame.pack(side="bottom", fill="x", padx=self.pad, pady=12)
-
-        # 内容区填充剩余空间
-        self.content_frame = tk.Frame(self.win, bg=bg_color)
-        self.content_frame.pack(side="top", fill="both", expand=True, padx=self.pad, pady=(12, 0))
-
-        self.content_widgets = []
-
-        self.pet_x = pet_x
-        self.pet_y = pet_y
-        self.pet_w = pet_w
-        self.pet_h = pet_h
-
-        self._show_page(0)
-        self.win.update_idletasks()
-        content_h = self.content_frame.winfo_reqheight()
-        btn_h = self.btn_frame.winfo_reqheight()
-        title_h = 70
-        self.fixed_h = content_h + btn_h + title_h + 40
-        if self.fixed_h < 280:
-            self.fixed_h = 280
-        if self.fixed_h > 620:
-            self.fixed_h = 620
-
-        x = pet_x + (pet_w - self.w) // 2
-        y = pet_y - self.fixed_h - 12
-        if y < 0:
-            y = pet_y + pet_h + 12
-        self.win.geometry(f"{self.w}x{self.fixed_h}+{x}+{y}")
-        self._follow()
-
-    def _show_page(self, page_idx):
-        for w in self.content_widgets:
-            w.destroy()
-        self.content_widgets.clear()
-        for w in self.btn_frame.winfo_children():
-            w.destroy()
-
-        if page_idx < len(self.text_pages):
-            for paragraph in self.text_pages[page_idx]:
-                lbl = tk.Label(self.content_frame, text=paragraph, font=("Segoe UI", 10),
-                               fg="#404040", bg=self.win.cget("bg"),
-                               anchor="w", justify="left", wraplength=360)
-                lbl.pack(fill="x", pady=2)
-                self.content_widgets.append(lbl)
-
-            if page_idx < self.total_pages - 1:
-                next_text = "继续 ▶"
-                next_cmd = self._next_page
-            else:
-                next_text = "结束"
-                next_cmd = self.win.destroy
-
-            tk.Button(self.btn_frame, text=next_text, font=("Segoe UI", 12),
-                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=14,
-                      command=next_cmd).pack(side="left", padx=4)
-
-            tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 12),
-                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=14,
-                      command=self.win.destroy).pack(side="right", padx=4)
-
-        else:
-            tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
-                     fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
-            self.content_widgets.append(self.content_frame.winfo_children()[-1])
-
-            for i, opt in enumerate(self.options):
-                tk.Button(self.btn_frame, text=opt["text"], font=("Segoe UI", 12),
-                          fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                          bd=1, relief="solid", padx=12, pady=14,
-                          command=lambda idx=i: self._choose(idx)).pack(fill="x", pady=4)
-
-            tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 12),
-                      fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=14,
-                      command=self.win.destroy).pack(pady=(8, 0))
-
-        self.current_page = page_idx
-
-    def _next_page(self):
-        if self.current_page < self.total_pages - 1:
-            self._show_page(self.current_page + 1)
-        else:
-            self.win.destroy()
-
-    def _choose(self, idx):
-        result_text = self.options[idx].get("result", "") if isinstance(self.options[idx], dict) else ""
-        if result_text:
-            for w in self.content_widgets:
-                w.destroy()
-            self.content_widgets.clear()
-            for w in self.btn_frame.winfo_children():
-                w.destroy()
-            tk.Label(self.content_frame, text=result_text, font=("Segoe UI", 10),
-                     fg="#404040", bg=self.win.cget("bg"),
-                     anchor="w", justify="left", wraplength=360).pack(fill="x", pady=2)
-            tk.Button(self.btn_frame, text="继续", font=("Segoe UI", 12),
-                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=8,
-                      command=lambda: self._finish_choice(idx)).pack(side="right", padx=4)
-        else:
-            self._finish_choice(idx)
-
-    def _finish_choice(self, idx):
-        self.win.destroy()
-        if self.callback:
-            self.callback(idx)
-
-    def _follow(self):
-        if self.win.winfo_exists():
-            nx = self.pet_x + (self.pet_w - 400) // 2
-            ny = self.pet_y - self.fixed_h - 12
-            if ny < 0:
-                ny = self.pet_y + self.pet_h + 12
-            self.win.geometry(f"+{nx}+{ny}")
-            self.win.after(200, self._follow)
+def _random_talent_boost(state):
+    if random.random() < 0.5:
+        state.vocal += 1
+    else:
+        state.dance += 1
 
 
-class AdventureManager:
-    def __init__(self, pet_state, pet=None):
-        self.pet_state = pet_state
+class ActionManager:
+    def __init__(self, pet):
         self.pet = pet
-        self.state = "idle"
-        self.current_adventure_id = None
-        self.current_stage_id = None
-        self.pending_timer = None
-        self.callback_on_stage = None
 
-        if pet_state.active_adventure_id:
-            self.current_adventure_id = pet_state.active_adventure_id
-            self.current_stage_id = pet_state.active_adventure_stage
-            self.pending_timer = pet_state.pending_adventure_timer
-            self.state = "pending"
+    def cancel_current_activity(self):
+        if self.pet.current_activity:
+            self.pet.current_activity.cancel()
+            self.pet.current_activity = None
+        if self.pet.performance_win:
+            self.pet.performance_win.cancel()
+            self.pet.performance_win = None
+        self.pet.current_activity_name = None
+        self.pet.anim_manager.switch_to_idle()
+        self.pet.event_scheduler.set_action(None)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
 
-        self.adventure_pool = self._load_pool()
-        self._current_adventure_data = None
-
-    def _load_pool(self):
-        from adventure_pool import ADVENTURES
-        return {adv["id"]: adv for adv in ADVENTURES}
-
-    def _get_adventure(self, adv_id):
-        return self.adventure_pool.get(adv_id)
-
-    def set_stage_callback(self, callback):
-        self.callback_on_stage = callback
-
-    def check_trigger(self, now=None, current_activity=""):
-        if self.state == "active":
-            return None
-
-        if now is None:
-            now = time.time()
-
-        pet = self.pet_state
-
-        if self.state == "pending":
-            adv = self._get_adventure(self.current_adventure_id)
-            if not adv:
-                self._reset_to_idle()
-                return None
-            stage = adv["stages"].get(self.current_stage_id)
-            if not stage:
-                self._reset_to_idle()
-                return None
-
-            trigger = stage.get("stage_trigger")
-            if not trigger:
-                self._reset_to_idle()
-                return None
-
-            if not self._check_flags(trigger.get("flag_required", [])):
-                return None
-
-            trigger_type = trigger.get("trigger_type", "default")
-            if trigger_type == "timer":
-                # 定时器到期立刻触发，不受活动限制
-                if self.pending_timer and now >= self.pending_timer:
-                    return self._start_stage(self.current_adventure_id, self.current_stage_id)
-                else:
-                    return None
-            elif trigger_type == "item_use":
-                return None
+    def do_part_time_job(self, job):
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始打工？"):
+                return
             else:
-                if self._check_conditions(trigger, current_activity):
-                    return self._start_stage(self.current_adventure_id, self.current_stage_id)
-                else:
-                    return None
+                self.cancel_current_activity()
 
-        # idle 状态检查入口
-        candidates = []
-        for adv_id, adv in self.adventure_pool.items():
-            if adv_id in pet.adventure_history:
-                continue
-            if self._check_conditions(adv.get("trigger", {}), current_activity):
-                prob = adv.get("base_probability", 0.01)
-                if random.random() < prob:
-                    candidates.append(adv_id)
-
-        if not candidates:
-            return None
-
-        chosen_id = random.choice(candidates)
-        return self._start_adventure_entry(chosen_id)
-
-    def _start_adventure_entry(self, adv_id):
-        adv = self._get_adventure(adv_id)
-        if not adv:
-            return None
-        entry_stage_id = list(adv["stages"].keys())[0]
-        return self._start_stage(adv_id, entry_stage_id, is_entry=True)
-
-    def _start_stage(self, adv_id, stage_id, is_entry=False):
-        adv = self._get_adventure(adv_id)
-        stage = adv["stages"][stage_id]
-        self.state = "active"
-        self.current_adventure_id = adv_id
-        self.current_stage_id = stage_id
-        self._current_adventure_data = adv
-        return {
-            "adventure_name": adv["name"],
-            "stage_text": stage["text"],
-            "options": stage.get("options", []),
-            "location": stage.get("location", adv.get("location", "")),
-            "is_entry": is_entry
-        }
-
-    def check_item_trigger(self, item_id):
-        if self.state != "pending":
-            return None
-
-        adv = self._get_adventure(self.current_adventure_id)
-        stage = adv["stages"].get(self.current_stage_id) if adv else None
-        if not stage:
-            return None
-
-        trigger = stage.get("stage_trigger")
-        if not trigger or trigger.get("trigger_type") != "item_use":
-            return None
-        if trigger.get("item_id") == item_id:
-            if self._check_flags(trigger.get("flag_required", [])):
-                return self._start_stage(self.current_adventure_id, self.current_stage_id)
-        return None
-
-    def proceed(self, option_index):
-        if self.state != "active":
-            return None
-
-        adv = self._current_adventure_data
-        stage = adv["stages"][self.current_stage_id]
-        options = stage.get("options", [])
-
-        if option_index < 0 or option_index >= len(options):
-            return None
-
-        chosen = options[option_index]
-        effects = chosen.get("effects", {})
-        self._apply_effects(effects)
-
-        next_stage_id = chosen.get("next", "end")
-        if next_stage_id == "end":
-            self._complete_adventure()
-            return None
-
-        next_stage = adv["stages"].get(next_stage_id)
-        if not next_stage:
-            self._complete_adventure()
-            return None
-
-        if next_stage.get("stage_trigger"):
-            self.state = "pending"
-            self.current_stage_id = next_stage_id
-            self._current_adventure_data = adv
-
-            if "set_timer" in effects:
-                self.pending_timer = time.time() + (effects["set_timer"] * 60)
-            else:
-                self.pending_timer = None
-
-            self._save_pending_state()
-            return {"pending": True}
+        if job == "便利店兼职":
+            self.pet.anim_manager.play_action_animation("便利店兼职")
+            duration = 10                              # 测试用，正常为 3600
+            def effect(state):
+                state.gold += 20
+                state.satiety = max(0, state.satiety - 8)
+                state.stamina = max(0, state.stamina - 20)
+                state.hygiene = max(0, state.hygiene - 5)
+                state.mood = max(0, state.mood - 3)
+                state.gain_exp(5)
+                self.pet.anim_manager.switch_to_idle()
+        elif job == "咖啡店打工":
+            self.pet.anim_manager.play_action_animation("咖啡店打工")
+            duration = 3600
+            def effect(state):
+                state.gold += 15
+                state.charm += 3
+                state.satiety = max(0, state.satiety - 6)
+                state.stamina = max(0, state.stamina - 15)
+                state.hygiene = max(0, state.hygiene - 5)
+                state.mood = max(0, state.mood - 2)
+                state.gain_exp(5)
+                self.pet.anim_manager.switch_to_idle()
+        elif job == "快递分拣":
+            duration = 5400
+            def effect(state):
+                state.gold += 30
+                state.stamina = max(0, state.stamina - 30)
+                state.satiety = max(0, state.satiety - 12)
+                state.hygiene = max(0, state.hygiene - 10)
+                state.mood = max(0, state.mood - 5)
+                state.gain_exp(5)
         else:
-            return self._start_stage(self.current_adventure_id, next_stage_id)
-
-    def _apply_effects(self, effects):
-        pet = self.pet_state
-        if "mood" in effects:
-            pet.mood = max(0, min(100, pet.mood + effects["mood"]))
-        if "gold" in effects:
-            pet.gold += effects["gold"]
-        if "trait_add" in effects:
-            trait = effects["trait_add"]
-            if isinstance(trait, list):
-                for t in trait:
-                    pet.add_trait(t)
-            else:
-                pet.add_trait(trait)
-        if "trait_remove" in effects:
-            pet.remove_trait(effects["trait_remove"])
-        if "set_flag" in effects:
-            pet.set_flag(effects["set_flag"])
-        if "remove_flag" in effects:
-            pet.remove_flag(effects["remove_flag"])
-        if "give_item" in effects:
-            item = effects["give_item"].copy()
-            item["origin_adventure"] = self.current_adventure_id
-            pet.add_adventure_item(item)
-        if "update_item_desc" in effects:
-            info = effects["update_item_desc"]
-            pet.update_adventure_item(info["id"], info["desc"])
-        if "unlock_job" in effects:
-            pet.unlock_job(effects["unlock_job"])
-        if "unlock_event" in effects:
-            pet.unlock_event(effects["unlock_event"])
-
-    def _check_conditions(self, trigger, current_activity):
-        pet = self.pet_state
-        if "activity" in trigger:
-            if current_activity != trigger["activity"]:
-                return False
-        if "charm_min" in trigger:
-            if pet.charm < trigger["charm_min"]:
-                return False
-        if "mood_max" in trigger:
-            if pet.mood > trigger["mood_max"]:
-                return False
-        if "gold_min" in trigger:
-            if pet.gold < trigger["gold_min"]:
-                return False
-        if "time_range" in trigger:
-            hour = time.localtime().tm_hour
-            start, end = trigger["time_range"]
-            if start <= end:
-                if not (start <= hour < end):
-                    return False
-            else:
-                if not (hour >= start or hour < end):
-                    return False
-        if "activity_count_min" in trigger:
-            count = pet.activity_counts.get(trigger["activity"], 0)
-            if count < trigger["activity_count_min"]:
-                return False
-        if "flag_required" in trigger:
-            if not self._check_flags(trigger["flag_required"]):
-                return False
-        return True
-
-    def _check_flags(self, required_flags):
-        if not required_flags:
-            return True
-        for f in required_flags:
-            if f not in self.pet_state.flags:
-                return False
-        return True
-
-    def _complete_adventure(self):
-        adv_id = self.current_adventure_id
-        self.pet_state.adventure_history.append(adv_id)
-        self._reset_to_idle()
-
-    def _reset_to_idle(self):
-        self.state = "idle"
-        self.current_adventure_id = None
-        self.current_stage_id = None
-        self.pending_timer = None
-        self._current_adventure_data = None
-        self._clear_pending_state()
-
-    def _save_pending_state(self):
-        pet = self.pet_state
-        pet.active_adventure_id = self.current_adventure_id
-        pet.active_adventure_stage = self.current_stage_id
-        pet.pending_adventure_timer = self.pending_timer
-
-    def _clear_pending_state(self):
-        pet = self.pet_state
-        pet.active_adventure_id = None
-        pet.active_adventure_stage = None
-        pet.pending_adventure_timer = None
-
-    # ---------- 背包 UI ----------
-    def show_bag(self, parent):
-        win = tk.Toplevel(parent)
-        win.title("背包")
-        win.configure(bg="white")
-        win.geometry("340x400")
-        win.resizable(False, False)
-
-        tk.Label(win, text="📦 普通物品", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(10,0))
-        inv = self.pet_state.inventory
-        if inv:
-            frame_inv = tk.Frame(win, bg="white")
-            frame_inv.pack(fill="x", padx=10, pady=2)
-            for name, qty in inv.items():
-                tk.Label(frame_inv, text=f"{name} x{qty}", font=("Segoe UI", 10), bg="white", anchor="w").pack(fill="x", pady=1)
-        else:
-            tk.Label(win, text="（空）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
-
-        tk.Label(win, text="✨ 奇遇道具", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(12,0))
-        items = self.pet_state.adventure_items
-        if items:
-            frame_adv = tk.Frame(win, bg="white")
-            frame_adv.pack(fill="x", padx=10, pady=2)
-            for item in items:
-                row = tk.Frame(frame_adv, bg="white")
-                row.pack(fill="x", pady=2)
-
-                info_frame = tk.Frame(row, bg="white")
-                info_frame.pack(side="left", fill="x", expand=True)
-
-                tk.Label(info_frame, text=item['name'], font=("Segoe UI", 10, "bold"),
-                         fg="black", bg="white", anchor="w").pack(anchor="w")
-                desc = item.get('desc', '')
-                tk.Label(info_frame, text=desc, font=("Segoe UI", 9),
-                         fg="gray", bg="white", anchor="w", justify="left",
-                         wraplength=200).pack(anchor="w")
-
-                if item.get("usable", False):
-                    tk.Button(row, text="使用", font=("Segoe UI", 9),
-                              bg="white", fg="black", padx=6, pady=2,
-                              command=lambda i=item: self._use_item(i, win)).pack(side="right", padx=(8,0))
-        else:
-            tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
-
-    def _use_item(self, item, bag_window):
-        if self.pet and self.pet.current_activity_name:
-            messagebox.showinfo("提示", "你正在活动中，无法使用奇遇道具", parent=bag_window)
             return
 
-        result = self.check_item_trigger(item["id"])
-        if result:
-            bag_window.destroy()
-            if self.callback_on_stage:
-                self.callback_on_stage(result)
+        self.start_activity(job, 0, duration, effect)
+
+    def buy_training(self, course):
+        s = self.pet.state
+        if "进阶" in course:
+            cost = 60
+            gain = 15
+            duration = 5400
         else:
-            messagebox.showinfo("提示", "现在不是使用的时候", parent=bag_window)
+            cost = 30
+            gain = 8
+            duration = 3600
+
+        if not messagebox.askyesno("确认报名", f"是否花费 {cost} 金币报名「{course}」？"):
+            return
+
+        if s.gold < cost:
+            self.pet.ui_manager.show_info("金币不足！")
+            return
+
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始培训？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        # 播放对应培训动画（如果有）
+        self.pet.anim_manager.play_action_animation(course)
+
+        if "声乐" in course:
+            attr = "vocal"
+        elif "舞蹈" in course:
+            attr = "dance"
+        elif "表演" in course:
+            attr = "acting"
+        else:
+            attr = None
+
+        def effect(state):
+            if attr:
+                setattr(state, attr, getattr(state, attr) + gain)
+            # 消耗
+            if "进阶" in course:
+                if "声乐" in course:
+                    state.satiety = max(0, state.satiety - 12)
+                    state.stamina = max(0, state.stamina - 22)
+                    state.hygiene = max(0, state.hygiene - 8)
+                    state.mood = max(0, state.mood - 3)
+                elif "舞蹈" in course:
+                    state.satiety = max(0, state.satiety - 14)
+                    state.stamina = max(0, state.stamina - 28)
+                    state.hygiene = max(0, state.hygiene - 12)
+                    state.mood = max(0, state.mood - 4)
+                else:
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+            else:
+                if "声乐" in course:
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+                elif "舞蹈" in course:
+                    state.satiety = max(0, state.satiety - 10)
+                    state.stamina = max(0, state.stamina - 20)
+                    state.hygiene = max(0, state.hygiene - 10)
+                    state.mood = max(0, state.mood - 3)
+                elif "表演" in course:
+                    state.satiety = max(0, state.satiety - 8)
+                    state.stamina = max(0, state.stamina - 15)
+                    state.hygiene = max(0, state.hygiene - 5)
+                    state.mood = max(0, state.mood - 2)
+            state.gain_exp(10)
+            # 培训结束切回待机
+            self.pet.anim_manager.switch_to_idle()
+
+        self.start_activity(course, cost, duration, effect)
+
+    def street_performance(self):
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始表演？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        gain = random.randint(1, 5)
+        is_vocal = random.random() < 0.5
+
+        def effect(state):
+            if is_vocal:
+                state.vocal += gain
+            else:
+                state.dance += gain
+            state.charm += 5
+            state.satiety = max(0, state.satiety - 6)
+            state.stamina = max(0, state.stamina - 18)
+            state.hygiene = max(0, state.hygiene - 5)
+            state.mood = min(100, state.mood + 3)
+            state.gain_exp(5)
+
+        self.start_activity("街头表演", 0, 3600, effect)
+
+    # ==================== 面试 ====================
+    def start_interview(self):
+        s = self.pet.state
+        if s.gold < 10:
+            self.pet.ui_manager.show_info("金币不足10，无法报名面试！")
+            return
+
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并准备面试？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        choice_win = tk.Toplevel(self.pet.pet_win)
+        choice_win.overrideredirect(True)
+        choice_win.wm_attributes("-topmost", True)
+        choice_win.configure(bg="#FFFFFF")
+        choice_win.attributes("-alpha", 1.0)
+
+        w = 360
+        pad = 20
+        tk.Label(choice_win, text="🤔 面试前准备", font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        tk.Frame(choice_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+        tk.Label(choice_win, text="报名费10金币，面试总时长28分钟\n选择一个准备方式：", font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF", justify="left").pack(pady=(12, 0), padx=pad)
+
+        btn_frame = tk.Frame(choice_win, bg="#FFFFFF")
+        btn_frame.pack(pady=12, padx=pad, fill="x")
+
+        def select_prep(effect_func, label):
+            choice_win.destroy()
+            s.gold -= 10
+            self.pet.current_activity_name = "面试中"
+
+            self._interview_stages = [
+                (f"🤔 面试准备({label})...", 10, False),
+                ("⏳ 等待叫号...", 10, False),
+                ("🎤 才艺展示...", 10, False),
+                ("📸 镜头测试...", 10, False),
+                ("🎙️ 即兴问答", 0, True),
+                ("📋 结果等候...", 10, False),
+                ("📢 结果揭晓...", 10, False),
+            ]
+            self._interview_effect = effect_func
+            self._interview_state = s
+            self._interview_start_time = time.time()
+            self._interview_total_duration = sum(d for _, d, _ in self._interview_stages)
+            self._create_interview_progress_window()
+            self._run_interview_stage(0)
+
+        preps = [
+            ("🍱 吃饱再去", lambda st: setattr(st, 'stamina', min(100, st.stamina + 15)), "吃饱"),
+            ("🧼 精心打扮", lambda st: setattr(st, 'charm', st.charm + 2), "打扮"),
+            ("😴 充分休息", lambda st: setattr(st, 'mood', min(100, st.mood + 6)), "休息"),
+            ("🎤 临时抱佛脚", _random_talent_boost, "抱佛脚"),
+        ]
+        for text, func, label in preps:
+            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=8, command=lambda f=func, l=label: select_prep(f, l))
+            btn.pack(fill="x", pady=4)
+
+        tk.Button(choice_win, text="取消", font=("Segoe UI", 10), fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=4, command=choice_win.destroy).pack(pady=(0, pad))
+
+        choice_win.update_idletasks()
+        h = choice_win.winfo_reqheight()
+        x = self.pet.x + (self.pet.pet_w - w) // 2
+        y = self.pet.y - h - 12
+        if y < 0:
+            y = self.pet.y + self.pet.pet_h + 12
+        choice_win.geometry(f"{w}x{h}+{x}+{y}")
+
+        def update_position():
+            if choice_win.winfo_exists():
+                nx = self.pet.x + (self.pet.pet_w - w) // 2
+                ny = self.pet.y - h - 12
+                if ny < 0:
+                    ny = self.pet.y + self.pet.pet_h + 12
+                choice_win.geometry(f"+{nx}+{ny}")
+                choice_win.after(200, update_position)
+        self.pet.register_follow_window(choice_win, update_position)
+
+        def on_close():
+            self.pet.unregister_follow_window(choice_win)
+            choice_win.destroy()
+        choice_win.protocol("WM_DELETE_WINDOW", on_close)
+
+    def _create_interview_progress_window(self):
+        win = tk.Toplevel(self.pet.pet_win)
+        win.overrideredirect(True)
+        win.wm_attributes("-topmost", True)
+        win.wm_attributes("-transparentcolor", "#F0F0F0")
+        win.configure(bg="#F0F0F0")
+        bw, bh = 300, 80
+        pos_x = self.pet.x + (self.pet.pet_w - bw) // 2
+        pos_y = self.pet.y + self.pet.pet_h + 16
+        win.geometry(f"{bw}x{bh}+{pos_x}+{pos_y}")
+
+        title_label = tk.Label(win, text="", font=("Segoe UI", 12, "bold"), fg="#1A1A1A", bg="#F0F0F0")
+        title_label.pack(pady=(8, 0))
+        bar = tk.Canvas(win, width=240, height=4, bg="#E5E5E5", highlightthickness=0)
+        bar.pack(pady=8)
+
+        self._interview_win = win
+        self._interview_title = title_label
+        self._interview_bar = bar
+
+        # 托盘用假活动对象，增加 total_duration 和 total_elapsed
+        self.pet.current_activity = type('obj', (object,), {
+            'title': '',
+            'elapsed': 0,
+            'duration': 1,
+            'total_duration': self._interview_total_duration,
+            'total_elapsed': 0,
+            'get_progress': lambda self_obj: (
+                min(100, int(self_obj.elapsed / max(1, self_obj.duration) * 100)),
+                f"{max(0, self_obj.duration - self_obj.elapsed):.0f}秒"
+            ),
+            'get_total_progress': lambda self_obj: min(100, int(self_obj.total_elapsed / max(1, self_obj.total_duration) * 100)),
+        })()
+
+        def update_position():
+            if win.winfo_exists():
+                nx = self.pet.x + (self.pet.pet_w - bw) // 2
+                ny = self.pet.y + self.pet.pet_h + 16
+                win.geometry(f"+{nx}+{ny}")
+                win.after(200, update_position)
+        self.pet.register_follow_window(win, update_position)
+
+    def _run_interview_stage(self, index):
+        stages = self._interview_stages
+        if index >= len(stages):
+            self._finish_interview()
+            return
+
+        title, duration, is_question = stages[index]
+        self._interview_title.config(text=title)
+        self._interview_bar.delete("all")
+        self._interview_bar.create_rectangle(0, 0, 0, 4, fill="#4CAF50", outline="")
+
+        # 更新托盘显示的名称
+        self.pet.current_activity_name = title
+
+        act = self.pet.current_activity
+        act.title = title
+        act.elapsed = 0
+        act.duration = duration
+
+        if is_question:
+            self._interview_question()
+        else:
+            self._start_stage_timer(index, duration)
+
+    def _start_stage_timer(self, index, total_sec):
+        start_time = time.time()
+        act = self.pet.current_activity
+
+        def update_bar():
+            if not self._interview_win or not self._interview_win.winfo_exists():
+                return
+            elapsed = time.time() - start_time
+            act.elapsed = elapsed
+            act.total_elapsed = time.time() - self._interview_start_time
+            pct = min(100, int(elapsed / total_sec * 100))
+            self._interview_bar.delete("all")
+            self._interview_bar.create_rectangle(0, 0, 240 * pct / 100, 4, fill="#4CAF50", outline="")
+            if elapsed >= total_sec:
+                if index == 0 and self._interview_effect:
+                    self._interview_effect(self._interview_state)
+                self._run_interview_stage(index + 1)
+            else:
+                self._interview_win.after(100, update_bar)
+        update_bar()
+
+    def _interview_question(self):
+        q_win = tk.Toplevel(self.pet.pet_win)
+        q_win.overrideredirect(True)
+        q_win.wm_attributes("-topmost", True)
+        q_win.configure(bg="#FFFFFF")
+        q_win.attributes("-alpha", 1.0)
+
+        w = 320
+        pad = 16
+        tk.Label(q_win, text="🎙️ 即兴问答", font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFFFFF").pack(pady=(pad, 0))
+        tk.Frame(q_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+        tk.Label(q_win, text="面试官突然问：\n「你觉得自己最大的优势是什么？」", font=("Segoe UI", 10), fg="#404040", bg="#FFFFFF", justify="left", wraplength=280).pack(pady=(12, 0), padx=pad)
+
+        btn_frame = tk.Frame(q_win, bg="#FFFFFF")
+        btn_frame.pack(pady=12, padx=pad, fill="x")
+
+        def answer(attr, val):
+            q_win.destroy()
+            setattr(self._interview_state, attr, getattr(self._interview_state, attr) + val)
+            q_idx = self._interview_stages.index(("🎙️ 即兴问答", 0, True))
+            self._run_interview_stage(q_idx + 1)
+
+        answers = [
+            ("「我的唱功是最好的」", "vocal", 2),
+            ("「我的舞蹈很有感染力」", "dance", 2),
+            ("「我的综合实力很强」", "charm", 2),
+        ]
+        for text, attr, val in answers:
+            btn = tk.Button(btn_frame, text=text, font=("Segoe UI", 10), fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5", bd=1, relief="solid", padx=12, pady=8, command=lambda a=attr, v=val: answer(a, v))
+            btn.pack(fill="x", pady=4)
+
+        q_win.update_idletasks()
+        h = q_win.winfo_reqheight()
+        x = self.pet.x + (self.pet.pet_w - w) // 2
+        y = self.pet.y - h - 12
+        if y < 0:
+            y = self.pet.y + self.pet.pet_h + 12
+        q_win.geometry(f"{w}x{h}+{x}+{y}")
+
+        def update_position():
+            if q_win.winfo_exists():
+                nx = self.pet.x + (self.pet.pet_w - w) // 2
+                ny = self.pet.y - h - 12
+                if ny < 0:
+                    ny = self.pet.y + self.pet.pet_h + 12
+                q_win.geometry(f"+{nx}+{ny}")
+                q_win.after(200, update_position)
+        self.pet.register_follow_window(q_win, update_position)
+
+        def on_close():
+            self.pet.unregister_follow_window(q_win)
+            q_win.destroy()
+        q_win.protocol("WM_DELETE_WINDOW", on_close)
+
+    def _finish_interview(self):
+        if self._interview_win:
+            self._interview_win.destroy()
+            self._interview_win = None
+        self.pet.current_activity = None
+        self.pet.current_activity_name = None
+
+        state = self._interview_state
+        general = (state.vocal >= 25 and state.dance >= 25 and state.charm >= 25 and (state.vocal + state.dance + state.charm) >= 95)
+        talent = (state.vocal >= 38 or state.dance >= 38)
+        visual = (state.charm >= 42)
+
+        if general or talent or visual:
+            if general:
+                msg = "面试通过！成为见习练习生（综合录取）"
+            elif talent:
+                msg = "面试通过！成为见习练习生（特长录取）"
+            else:
+                msg = "面试通过！成为见习练习生（颜值录取）"
+            state.promote(2, "见习练习生 🎓")
+        else:
+            msg = "面试未通过，继续努力吧"
+
+        self.pet.ui_manager.show_toast(msg)
+        self.pet.anim_manager.switch_to_idle()
+        state.save()
+        self.pet.refresh_status()
+        self.pet.event_scheduler.set_action(None)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+    # ==================== 通用活动接口 ====================
+    def use_inventory_item(self, name, duration, effect_func):
+        if self.pet.state.inventory.get(name, 0) <= 0:
+            self.pet.ui_manager.show_info("背包中没有该物品！")
+            return
+        self.pet.state.inventory[name] -= 1
+        if self.pet.state.inventory[name] == 0:
+            del self.pet.state.inventory[name]
+        self.pet.ui_manager.show_toast(f"使用 {name}")
+        self.pet.anim_manager.play_action_animation(name)
+        self.start_activity(name, 0, duration, effect_func, refund_item=name)
+
+    def start_clean_action(self, name, price, duration, effect_func):
+        self.pet.anim_manager.play_action_animation(name)
+        self.start_activity(name, price, duration, effect_func)
+
+    def start_activity(self, name, price, duration, effect_func, refund_item=None):
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始新活动？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        s = self.pet.state
+        if price > 0 and s.gold < price:
+            self.pet.ui_manager.show_info("金币不足！")
+            return
+        if price > 0:
+            s.gold -= price
+
+        self.pet.event_scheduler.set_action(name)
+        self.pet.current_activity_name = name
+
+        # 统一活动计数（所有通过 start_activity 启动的活动都会累加）
+        self.pet.state.activity_counts[name] = self.pet.state.activity_counts.get(name, 0) + 1
+
+        # ... 后续 on_finish、on_cancel 等保持不变
+
+        def on_finish():
+            # 如果奇遇正在进行，延迟完成，等待奇遇结束
+            if hasattr(self.pet, 'adventure_manager') and self.pet.adventure_manager.state == "active":
+                self.pet.root.after(500, on_finish)
+                return
+            effect_func(s)
+            self.pet.anim_manager.switch_to_idle()
+            self.pet.ui_manager.show_toast(f"✅ {name}完成")
+            self.pet.current_activity = None
+            self.pet.current_activity_name = None
+            s.save()
+            self.pet.refresh_status()
+            self.pet.event_scheduler.set_action(None)
+            self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+        def on_cancel():
+            if price > 0:
+                s.gold += price
+            if refund_item:
+                s.inventory[refund_item] = s.inventory.get(refund_item, 0) + 1
+            self.pet.anim_manager.switch_to_idle()
+            self.pet.ui_manager.show_toast(f"❌ {name}已取消")
+            self.pet.current_activity = None
+            self.pet.current_activity_name = None
+            s.save()
+            self.pet.event_scheduler.set_action(None)
+            self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+        self.pet.current_activity = ActivityWindow(self.pet.pet_win, f"{name}中...", duration, on_finish, on_cancel,
+                                                   pet_x=self.pet.x, pet_y=self.pet.y,
+                                                   pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                   visible=True)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+    def start_train(self, type_):
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并开始训练？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        ok, msg = self.pet.state.train(type_)
+        if not ok:
+            self.pet.ui_manager.show_info(msg)
+            return
+        self.pet.event_scheduler.set_action(f"训练-{type_}")
+        self.pet.current_activity_name = f"训练-{type_}"
+
+        self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "train", type_,
+                                                     callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
+                                                     pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                     visible=True)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+    def start_schedule(self):
+        if self.pet.current_activity or self.pet.performance_win:
+            if not messagebox.askyesno("活动冲突", "当前有活动正在进行，是否中止并接通告？"):
+                return
+            else:
+                self.cancel_current_activity()
+
+        ok, msg = self.pet.state.do_schedule()
+        if not ok:
+            self.pet.ui_manager.show_info(msg)
+            return
+        self.pet.event_scheduler.set_action("接通告")
+        self.pet.current_activity_name = "接通告"
+
+        self.pet.performance_win = PerformanceWindow(self.pet.pet_win, self.pet.state, "schedule", "",
+                                                     callback=self.on_activity_end, pet_x=self.pet.x, pet_y=self.pet.y,
+                                                     pet_w=self.pet.pet_w, pet_h=self.pet.pet_h,
+                                                     visible=True)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
+
+    def on_activity_end(self, msg=None):
+        self.pet.performance_win = None
+        self.pet.current_activity_name = None
+        if msg:
+            self.pet.ui_manager.show_info(msg)
+        self.pet.state.save()
+        self.pet.refresh_status()
+        self.pet.event_scheduler.set_action(None)
+        self.pet.status_panel_manager.refresh_tray_status_if_open()
