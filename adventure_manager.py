@@ -5,12 +5,11 @@ import time
 import random
 
 class AdventureStageWindow:
-    """奇遇叙事窗口（极简白底黑字，分页显示，触发时特殊样式）"""
+    """奇遇叙事窗口（极简白底黑字，分页显示，选项在最后）"""
     def __init__(self, parent, adventure_name, stage_text, options, callback, pet_x, pet_y, pet_w, pet_h, is_trigger=False):
         self.win = tk.Toplevel(parent)
         self.win.overrideredirect(True)
         self.win.wm_attributes("-topmost", True)
-        # 触发时使用浅金色背景，否则纯白
         bg_color = "#FFF8E1" if is_trigger else "#FFFFFF"
         self.win.configure(bg=bg_color)
         self.win.attributes("-alpha", 1.0)
@@ -21,61 +20,39 @@ class AdventureStageWindow:
         self.options = options
         self.current_page = 0
 
-        # 将文本按 \n 分割成行，每 6 行一页
-        lines = stage_text.split('\n')
-        pages = []
+        # 将文本按 \n 分割，过滤空行
+        raw_lines = stage_text.split('\n')
+        lines = [line.strip() for line in raw_lines if line.strip()]
+        if not lines:
+            lines = ["（剧情缺失）"]
+
+        # 每 6 行一页（文本页），最后如果还有选项，再加一页选项页
+        self.text_pages = []
         for i in range(0, len(lines), 6):
-            pages.append(lines[i:i+6])
-        if not pages:
-            pages = [[""]]
-        self.pages = pages
-        self.total_pages = len(pages)
+            self.text_pages.append(lines[i:i+6])
+
+        # 总页数 = 文本页数 +（有选项时多一页选项页）
+        self.has_options = bool(options)
+        self.total_pages = len(self.text_pages) + (1 if self.has_options else 0)
 
         # 标题
-        title_prefix = "✨ 奇遇触发 · " if is_trigger else ""
-        title_text = title_prefix + adventure_name
-        tk.Label(self.win, text=title_text, font=("Segoe UI", 12, "bold"),
+        tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg=bg_color).pack(pady=(pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
 
-        # 文本显示区域（根据行数动态高度）
-        self.text_frame = tk.Frame(self.win, bg=bg_color)
-        self.text_frame.pack(pady=(12, 0), padx=pad, fill="x")
-        self.text_labels = []  # 存储当前页的 Label，用于更新
+        # 文本/选项显示区域
+        self.content_frame = tk.Frame(self.win, bg=bg_color)
+        self.content_frame.pack(pady=(12, 0), padx=pad, fill="x")
+        self.content_widgets = []
 
         # 按钮框架
-        btn_frame = tk.Frame(self.win, bg=bg_color)
-        btn_frame.pack(pady=12, padx=pad, fill="x")
-
-        # 如果有选项，显示选项按钮；否则如果有多页，显示“继续”按钮；否则只显示关闭
-        if options:
-            # 选项模式（通常只有一页）
-            for i, opt_text in enumerate(options):
-                btn = tk.Button(btn_frame, text=opt_text, font=("Segoe UI", 10),
-                                fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                bd=1, relief="solid", padx=12, pady=8,
-                                command=lambda idx=i: self._choose(idx))
-                btn.pack(fill="x", pady=4)
-        else:
-            # 无选项，可能是纯叙事或分页
-            if self.total_pages > 1:
-                # 继续按钮
-                self.next_btn = tk.Button(btn_frame, text="继续 ▶", font=("Segoe UI", 10),
-                                          fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                                          bd=1, relief="solid", padx=12, pady=8,
-                                          command=self._next_page)
-                self.next_btn.pack(side="left", padx=4)
-            # 关闭按钮
-            close_btn = tk.Button(btn_frame, text="关闭", font=("Segoe UI", 10),
-                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
-                                  bd=1, relief="solid", padx=12, pady=8,
-                                  command=self.win.destroy)
-            close_btn.pack(side="right", padx=4) if self.total_pages > 1 else close_btn.pack()
+        self.btn_frame = tk.Frame(self.win, bg=bg_color)
+        self.btn_frame.pack(pady=12, padx=pad, fill="x")
 
         # 显示第一页
         self._show_page(0)
 
-        # 计算窗口高度
+        # 计算高度
         self.win.update_idletasks()
         h = self.win.winfo_reqheight()
         if h < 200:
@@ -89,7 +66,6 @@ class AdventureStageWindow:
             y = pet_y + pet_h + 12
         self.win.geometry(f"{w}x{h}+{x}+{y}")
 
-        # 跟随宠物移动
         self.pet_x = pet_x
         self.pet_y = pet_y
         self.pet_w = pet_w
@@ -97,25 +73,68 @@ class AdventureStageWindow:
         self._follow()
 
     def _show_page(self, page_idx):
-        """显示指定页的文本"""
-        for label in self.text_labels:
-            label.destroy()
-        self.text_labels.clear()
+        # 清空内容区
+        for widget in self.content_widgets:
+            widget.destroy()
+        self.content_widgets.clear()
 
-        page_lines = self.pages[page_idx]
-        for line in page_lines:
-            lbl = tk.Label(self.text_frame, text=line, font=("Segoe UI", 10),
-                           fg="#404040", bg=self.win.cget("bg"), anchor="w", justify="left")
-            lbl.pack(fill="x", pady=1)
-            self.text_labels.append(lbl)
+        # 清空按钮区
+        for widget in self.btn_frame.winfo_children():
+            widget.destroy()
+
+        # 判断页面类型
+        if page_idx < len(self.text_pages):
+            # 文本页
+            lines = self.text_pages[page_idx]
+            for line in lines:
+                lbl = tk.Label(self.content_frame, text=line, font=("Segoe UI", 10),
+                               fg="#404040", bg=self.win.cget("bg"),
+                               anchor="w", justify="left", wraplength=320)
+                lbl.pack(fill="x", pady=1)
+                self.content_widgets.append(lbl)
+        else:
+            # 选项页（只有一页，所有选项同时显示）
+            tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
+                     fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
+            for i, opt_text in enumerate(self.options):
+                btn = tk.Button(self.content_frame, text=opt_text, font=("Segoe UI", 10),
+                                fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                bd=1, relief="solid", padx=12, pady=8,
+                                command=lambda idx=i: self._choose(idx))
+                btn.pack(fill="x", pady=4)
+                self.content_widgets.append(btn)
+
+        # 按钮区：翻页/结束/取消
+        if page_idx < self.total_pages - 1:
+            # 不是最后一页，显示“继续”和“关闭”
+            next_btn = tk.Button(self.btn_frame, text="继续 ▶", font=("Segoe UI", 10),
+                                 fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                 bd=1, relief="solid", padx=12, pady=6,
+                                 command=self._next_page)
+            next_btn.pack(side="left", padx=4)
+            close_btn = tk.Button(self.btn_frame, text="关闭", font=("Segoe UI", 10),
+                                  fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                                  bd=1, relief="solid", padx=12, pady=6,
+                                  command=self.win.destroy)
+            close_btn.pack(side="right", padx=4)
+        else:
+            # 最后一页：如果是选项页，已经有选择按钮，这里只放“取消”；否则放“结束”
+            if self.has_options:
+                # 选项页，加一个“取消”按钮
+                cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 10),
+                                       fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                                       bd=1, relief="solid", padx=12, pady=6,
+                                       command=self.win.destroy)
+                cancel_btn.pack(side="right", padx=4)
+            else:
+                # 纯叙事结束
+                end_btn = tk.Button(self.btn_frame, text="结束", font=("Segoe UI", 10),
+                                    fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                                    bd=1, relief="solid", padx=12, pady=6,
+                                    command=self.win.destroy)
+                end_btn.pack(side="right", padx=4)
 
         self.current_page = page_idx
-        # 如果有多页，更新继续按钮状态
-        if hasattr(self, 'next_btn'):
-            if page_idx >= self.total_pages - 1:
-                self.next_btn.config(text="结束", command=self.win.destroy)
-            else:
-                self.next_btn.config(text="继续 ▶", command=self._next_page)
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
