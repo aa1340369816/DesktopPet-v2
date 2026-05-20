@@ -17,6 +17,7 @@ from action_manager import ActionManager
 from status_panel_manager import StatusPanelManager
 from danmaku_manager import DanmakuManager
 from companion_manager import CompanionManager
+from adventure_manager import AdventureManager, AdventureStageWindow
 
 
 class DesktopPet:
@@ -70,6 +71,10 @@ class DesktopPet:
         self.danmaku_manager = DanmakuManager(self)
         self.companion_manager = CompanionManager(self)
 
+        # 奇遇管理器
+        self.adventure_manager = AdventureManager(self.state)
+        self.adventure_manager.set_stage_callback(self.show_adventure_stage)
+
         # 缓存与启动
         self.anim_manager.show_progress_bar("正在准备动画缓存，请稍候...")
         self.cache_thread = threading.Thread(target=self.anim_manager.generate_caches_async, daemon=True)
@@ -82,7 +87,7 @@ class DesktopPet:
         self.current_activity = None
         self.status_win = None
         self.toast_win = None
-        self.current_activity_name = None   # 当前活动名称（字符串）
+        self.current_activity_name = None
 
         self.tray = None
         self.create_tray()
@@ -90,9 +95,6 @@ class DesktopPet:
 
         self.drag_data = {"x": 0, "y": 0}
         self.follow_windows = []
-        # 绑定宠物窗口移动事件，实时通知跟随窗口
-        self.pet_win.bind('<Configure>', self._on_pet_configure)
-
 
         self.event_scheduler = EventScheduler(
             self.state,
@@ -104,6 +106,7 @@ class DesktopPet:
             pet=self
         )
 
+    # ---------- 缓存与启动 ----------
     def _check_cache_thread(self):
         if self.cache_thread and self.cache_thread.is_alive():
             self.root.after(100, self._check_cache_thread)
@@ -147,15 +150,31 @@ class DesktopPet:
         self.anim_label.bind("<Double-Button-1>", lambda e: self.hide_pet())
         self.anim_label.bind("<Button-3>", self.right_click_menu)
 
-    # 效果表
+    # ---------- 奇遇回调 ----------
+    def show_adventure_stage(self, stage_data):
+        AdventureStageWindow(
+            self.pet_win,
+            stage_data["adventure_name"],
+            stage_data["stage_text"],
+            stage_data["options"],
+            self.on_adventure_choice,
+            self.x, self.y, self.pet_w, self.pet_h
+        )
+
+    def on_adventure_choice(self, choice_index):
+        next_stage = self.adventure_manager.proceed(choice_index)
+        if next_stage:
+            self.show_adventure_stage(next_stage)
+
+    # ---------- 效果表 ----------
     feed_effect_map = {
-        "超级食物碗": (10, lambda s: s.feed(30,5,0)),
-        "波奇饭便当": (10, lambda s: s.feed(40,8,5)),
-        "绿色排毒果汁": (10, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), s.gain_exp(3))),
-        "牛肉沙拉碗": (10, lambda s: s.feed(55,10,8)),
+        "超级食物碗": (20, lambda s: s.feed(30,5,0)),
+        "波奇饭便当": (25, lambda s: s.feed(40,8,5)),
+        "绿色排毒果汁": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), s.gain_exp(3))),
+        "牛肉沙拉碗": (35, lambda s: s.feed(55,10,8)),
         "泡菜豆腐锅": (40, lambda s: s.feed(50,5,10)),
         "荞麦冷面": (30, lambda s: s.feed(45,5,5)),
-        "冰美式": (10, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+15)), s.gain_exp(3))),
+        "冰美式": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+15)), s.gain_exp(3))),
         "抹茶燕麦拿铁": (20, lambda s: (setattr(s,'satiety',min(100,s.satiety+10)), setattr(s,'stamina',min(100,s.stamina+5)), setattr(s,'mood',min(100,s.mood+20)), setattr(s,'charm',s.charm+3), s.gain_exp(3))),
         "燕麦拿铁": (20, lambda s: (setattr(s,'satiety',min(100,s.satiety+15)), setattr(s,'stamina',min(100,s.stamina+8)), setattr(s,'mood',min(100,s.mood+25)), s.gain_exp(3))),
         "气泡冷萃": (15, lambda s: (setattr(s,'satiety',min(100,s.satiety+5)), setattr(s,'stamina',min(100,s.stamina+20)), setattr(s,'mood',min(100,s.mood+10)), s.gain_exp(3))),
@@ -175,7 +194,7 @@ class DesktopPet:
         "香薰水疗": (60, lambda s: (setattr(s,'hygiene',min(100,s.hygiene+100)), setattr(s,'stamina',min(100,s.stamina+10)), setattr(s,'mood',min(100,s.mood+40)), setattr(s,'charm',s.charm+12))),
     }
 
-    # 右键菜单
+    # ---------- 右键菜单 ----------
     def right_click_menu(self, event):
         menu = tk.Menu(self.pet_win, tearoff=0)
         s = self.state
@@ -214,7 +233,7 @@ class DesktopPet:
         basic_menu.add_command(label="🚿 快速淋浴 (免费)", command=lambda: self.action_manager.start_clean_action("快速淋浴",0,20,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+80)), setattr(s,'stamina',min(100,s.stamina+5)), setattr(s,'mood',min(100,s.mood+5)))))
         basic_menu.add_command(label="🛁 泡澡 (免费)", command=lambda: self.action_manager.start_clean_action("泡澡",0,10,lambda s: (setattr(s,'hygiene',min(100,s.hygiene+100)), setattr(s,'stamina',min(100,s.stamina+10)), setattr(s,'mood',min(100,s.mood+20)))))
         menu.add_cascade(label="🧼 基础清洁", menu=basic_menu)
-        
+
         if s.stage == 1:
             work_menu = tk.Menu(menu, tearoff=0)
             work_menu.add_command(label="🏪 便利店兼职 (+20💰)", command=lambda: self.action_manager.do_part_time_job("便利店兼职"))
@@ -259,6 +278,7 @@ class DesktopPet:
         menu.add_cascade(label="🔲 缩放", menu=zoom_menu)
 
         menu.add_command(label="🎒 背包", command=self.status_panel_manager.show_inventory)
+        menu.add_command(label="🎒 奇遇背包", command=lambda: self.adventure_manager.show_bag(self.pet_win))
         if self.state.focus_mode:
             menu.add_command(label="🍅 结束专注", command=self.toggle_focus)
         else:
@@ -272,6 +292,7 @@ class DesktopPet:
         menu.add_command(label="❌ 退出", command=self.quit_app)
         menu.post(event.x_root, event.y_root)
 
+    # ---------- 基础操作 ----------
     def custom_scale(self):
         result = simpledialog.askfloat("自定义大小", "输入缩放倍数（例如 1.8）：",
                                        initialvalue=self.state.scale,
@@ -284,7 +305,6 @@ class DesktopPet:
                 self.anim_manager.progress_win.destroy()
             self.anim_manager.set_scale(result)
 
-    # 基础操作
     def sleep(self):
         self.state.sleep(40)
         self.state.save()
@@ -349,17 +369,6 @@ class DesktopPet:
         self.drag_data["x"] = event.x
         self.drag_data["y"] = event.y
 
-    def register_follow_window(self, win, update_func):
-        """注册一个跟随宠物移动的窗口"""
-        for w, _ in self.follow_windows:
-            if w is win:
-                return
-        self.follow_windows.append((win, update_func))
-
-    def unregister_follow_window(self, win):
-        """取消注册"""
-        self.follow_windows = [(w, f) for w, f in self.follow_windows if w != win]
-
     def on_drag(self, event):
         dx = event.x - self.drag_data["x"]
         dy = event.y - self.drag_data["y"]
@@ -372,18 +381,34 @@ class DesktopPet:
             self.current_activity.pos_x = self.x + (self.pet_w - 280) // 2
             self.current_activity.pos_y = self.y + self.pet_h + 10
             self.current_activity.win.geometry(f"+{self.current_activity.pos_x}+{self.current_activity.pos_y}")
-        if self.performance_win:
-            self.performance_win.move_to(self.x, self.y)
+        self.move_notifications()
 
-    def _on_pet_configure(self, event):
-        """宠物窗口位置变化时，通知所有注册的跟随窗口"""
         for win, update_func in self.follow_windows[:]:
             if win.winfo_exists():
                 update_func()
             else:
                 self.follow_windows.remove((win, update_func))
 
-    
+    def register_follow_window(self, win, update_func):
+        for w, _ in self.follow_windows:
+            if w is win:
+                return
+        self.follow_windows.append((win, update_func))
+
+    def unregister_follow_window(self, win):
+        self.follow_windows = [(w, f) for w, f in self.follow_windows if w != win]
+
+    def move_notifications(self):
+        for popup in self.active_notifications[:]:
+            try:
+                if popup.winfo_exists():
+                    pet_x = self.pet_win.winfo_x()
+                    pet_y = self.pet_win.winfo_y()
+                    popup.geometry(f"+{pet_x + self.pet_w + 5}+{pet_y + 5}")
+            except:
+                if popup in self.active_notifications:
+                    self.active_notifications.remove(popup)
+
     def auto_save_loop(self):
         self.state.save()
         self.root.after(30000, self.auto_save_loop)
