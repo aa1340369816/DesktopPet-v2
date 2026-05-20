@@ -152,13 +152,15 @@ class DesktopPet:
 
     # ---------- 奇遇回调 ----------
     def show_adventure_stage(self, stage_data):
+        is_trigger = stage_data.get("is_entry", False)
         AdventureStageWindow(
             self.pet_win,
             stage_data["adventure_name"],
             stage_data["stage_text"],
             stage_data["options"],
             self.on_adventure_choice,
-            self.x, self.y, self.pet_w, self.pet_h
+            self.x, self.y, self.pet_w, self.pet_h,
+            is_trigger=is_trigger
         )
 
     def on_adventure_choice(self, choice_index):
