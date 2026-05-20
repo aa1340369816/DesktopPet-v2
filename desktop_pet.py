@@ -186,7 +186,7 @@ class DesktopPet:
                      ).pack(pady=(12, 0))
             tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 11),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=12, pady=10, height=2,
+                      bd=1, relief="solid", padx=12, pady=12,
                       command=open_narrative).pack(pady=(12, pad))
 
             x = self.x + (self.pet_w - w) // 2
