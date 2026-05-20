@@ -184,13 +184,10 @@ class DesktopPet:
             tk.Label(tip_win, text="一段不寻常的遭遇正在发生……",
                      font=("Segoe UI", 10), fg="#404040", bg="#FFF8E1"
                      ).pack(pady=(12, 0))
-            # 进入剧情按钮（自绘，不扁）
-            enter_frame = tk.Frame(tip_win, bg="#FFFFFF", cursor="hand2",
-                                   highlightbackground="#000000", highlightthickness=1)
-            enter_label = tk.Label(enter_frame, text="进入剧情", font=("Segoe UI", 12),
-                                   fg="#000000", bg="#FFFFFF")
-            enter_label.pack(padx=24, pady=12)
-            enter_frame.pack(pady=(12, pad))
+            tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 12),
+                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=24, pady=8, height=2,
+                      command=open_narrative).pack(pady=(12, pad))
 
             def on_enter_click(e):
                 open_narrative()
