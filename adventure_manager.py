@@ -113,8 +113,8 @@ class AdventureStageWindow:
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
 
-            for i, opt_text in enumerate(self.options):
-                tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 12),
+            for i, opt in enumerate(self.options):
+                tk.Button(self.btn_frame, text=opt["text"], font=("Segoe UI", 12),
                           fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                           bd=1, relief="solid", padx=12, pady=14,
                           command=lambda idx=i: self._choose(idx)).pack(fill="x", pady=4)
