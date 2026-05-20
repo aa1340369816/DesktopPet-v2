@@ -20,7 +20,6 @@ class AdventureStageWindow:
         self.options = options
         self.current_page = 0
 
-        # 分割文本
         raw_paragraphs = stage_text.split('\n')
         paragraphs = [p.strip() for p in raw_paragraphs if p.strip()]
         if not paragraphs:
@@ -33,12 +32,11 @@ class AdventureStageWindow:
         self.has_options = bool(options)
         self.total_pages = len(self.text_pages) + (1 if self.has_options else 0)
 
-        # 标题
         tk.Label(self.win, text=adventure_name, font=("Segoe UI", 12, "bold"),
                  fg="#000000", bg=bg_color).pack(pady=(self.pad, 0))
         tk.Frame(self.win, height=1, bg="#E5E5E5").pack(fill="x", padx=self.pad, pady=(8, 0))
 
-        # ---- 关键：按钮区先固定到底部 ----
+        # 按钮区固定在底部
         self.btn_frame = tk.Frame(self.win, bg=bg_color)
         self.btn_frame.pack(side="bottom", fill="x", padx=self.pad, pady=12)
 
@@ -53,13 +51,11 @@ class AdventureStageWindow:
         self.pet_w = pet_w
         self.pet_h = pet_h
 
-        # 动态计算窗口高度，确保按钮完全可见
         self._show_page(0)
         self.win.update_idletasks()
-        # 内容区高度 + 按钮区高度 + 标题等
         content_h = self.content_frame.winfo_reqheight()
         btn_h = self.btn_frame.winfo_reqheight()
-        title_h = 70   # 标题+分隔线大约高度
+        title_h = 70
         self.fixed_h = content_h + btn_h + title_h + 40
         if self.fixed_h < 280:
             self.fixed_h = 280
@@ -74,16 +70,13 @@ class AdventureStageWindow:
         self._follow()
 
     def _show_page(self, page_idx):
-        # 清空内容区
         for w in self.content_widgets:
             w.destroy()
         self.content_widgets.clear()
-        # 清空按钮区（只删按钮，btn_frame 本身不删）
         for w in self.btn_frame.winfo_children():
             w.destroy()
 
         if page_idx < len(self.text_pages):
-            # 文本页
             for paragraph in self.text_pages[page_idx]:
                 lbl = tk.Label(self.content_frame, text=paragraph, font=("Segoe UI", 10),
                                fg="#404040", bg=self.win.cget("bg"),
@@ -109,7 +102,6 @@ class AdventureStageWindow:
                       command=self.win.destroy).pack(side="right", padx=4)
 
         else:
-            # 选项页
             tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
             self.content_widgets.append(self.content_frame.winfo_children()[-1])
@@ -224,6 +216,7 @@ class AdventureManager:
 
             trigger_type = trigger.get("trigger_type", "default")
             if trigger_type == "timer":
+                # 定时器到期立刻触发，不受活动限制
                 if self.pending_timer and now >= self.pending_timer:
                     return self._start_stage(self.current_adventure_id, self.current_stage_id)
                 else:
@@ -432,7 +425,7 @@ class AdventureManager:
         win = tk.Toplevel(parent)
         win.title("背包")
         win.configure(bg="white")
-        win.geometry("340x400")                # 宽度稍微加大
+        win.geometry("340x400")
         win.resizable(False, False)
 
         tk.Label(win, text="📦 普通物品", font=("Segoe UI", 11, "bold"), bg="white", anchor="w").pack(fill="x", padx=10, pady=(10,0))
@@ -454,7 +447,6 @@ class AdventureManager:
                 row = tk.Frame(frame_adv, bg="white")
                 row.pack(fill="x", pady=2)
 
-                # 左侧：名字 + 描述
                 info_frame = tk.Frame(row, bg="white")
                 info_frame.pack(side="left", fill="x", expand=True)
 
@@ -465,7 +457,6 @@ class AdventureManager:
                          fg="gray", bg="white", anchor="w", justify="left",
                          wraplength=200).pack(anchor="w")
 
-                # 右侧：使用按钮
                 if item.get("usable", False):
                     tk.Button(row, text="使用", font=("Segoe UI", 9),
                               bg="white", fg="black", padx=6, pady=2,
@@ -474,7 +465,6 @@ class AdventureManager:
             tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
     def _use_item(self, item, bag_window):
-        # 仅检查是否正在进行普通活动（打工、训练等），不检查奇遇状态
         if self.pet and self.pet.current_activity_name:
             messagebox.showinfo("提示", "你正在活动中，无法使用奇遇道具", parent=bag_window)
             return
