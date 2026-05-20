@@ -53,9 +53,15 @@ class AdventureStageWindow:
         self.pet_w = pet_w
         self.pet_h = pet_h
 
-        # 显示第一页，并立即更新尺寸
+        # 显示第一页
         self._show_page(0)
-        self._update_geometry()
+        # 固定高度，避免布局计算错误导致按钮变扁
+        h = 420
+        x = pet_x + (pet_w - self.w) // 2
+        y = pet_y - h - 12
+        if y < 0:
+            y = pet_y + pet_h + 12
+        self.win.geometry(f"{self.w}x{h}+{x}+{y}")
         self._follow()
 
     def _update_geometry(self):
@@ -125,8 +131,6 @@ class AdventureStageWindow:
                       command=self.win.destroy).pack(pady=(8, 0))
 
         self.current_page = page_idx
-        # 关键：翻页后立即更新窗口尺寸
-        self._update_geometry()
 
     def _next_page(self):
         if self.current_page < self.total_pages - 1:
@@ -161,7 +165,11 @@ class AdventureStageWindow:
 
     def _follow(self):
         if self.win.winfo_exists():
-            self._update_geometry()
+            nx = self.pet_x + (self.pet_w - 400) // 2
+            ny = self.pet_y - 420 - 12
+            if ny < 0:
+                ny = self.pet_y + self.pet_h + 12
+            self.win.geometry(f"+{nx}+{ny}")
             self.win.after(200, self._follow)
 
 
