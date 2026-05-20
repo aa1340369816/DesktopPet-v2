@@ -187,7 +187,7 @@ class DesktopPet:
                      ).pack(pady=(12, 0))
             tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 12),
                       fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
-                      bd=1, relief="solid", padx=24, pady=12,
+                      bd=1, relief="solid", padx=24, pady=12, height=2,
                       command=open_narrative).pack(pady=(12, pad))
 
             # 定位到宠物头顶
