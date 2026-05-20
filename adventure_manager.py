@@ -453,7 +453,8 @@ class AdventureManager:
             for item in items:
                 row = tk.Frame(frame_adv, bg="white")
                 row.pack(fill="x", pady=2)
-                tk.Label(row, text=f"{item['name']}", font=("Segoe UI", 10), bg="white", anchor="w").pack(side="left")
+                tk.Label(row, text=f"{item['name']}\n{item.get('desc', '')}", font=("Segoe UI", 9),
+                         bg="white", anchor="w", justify="left").pack(side="left")
                 if item.get("usable", False):
                     tk.Button(row, text="使用", font=("Segoe UI", 10),
                               bg="white", fg="black", padx=8, pady=2,
@@ -462,13 +463,9 @@ class AdventureManager:
             tk.Label(win, text="（无）", bg="white", fg="gray", font=("Segoe UI", 9)).pack(anchor="w", padx=10)
 
     def _use_item(self, item, bag_window):
-        # 检查是否正在进行其他活动
+        # 仅检查是否正在进行普通活动（打工、训练等），不检查奇遇状态
         if self.pet and self.pet.current_activity_name:
             messagebox.showinfo("提示", "你正在活动中，无法使用奇遇道具", parent=bag_window)
-            return
-        # 检查是否有奇遇正在进行
-        if self.state == "active":
-            messagebox.showinfo("提示", "奇遇进行中，无法使用道具", parent=bag_window)
             return
 
         result = self.check_item_trigger(item["id"])
