@@ -153,6 +153,60 @@ class DesktopPet:
     # ---------- 奇遇回调 ----------
     def show_adventure_stage(self, stage_data):
         is_trigger = stage_data.get("is_entry", False)
+        if is_trigger:
+            # 先弹出触发提示窗
+            def open_narrative():
+                tip_win.destroy()
+                # 重新调用，但这次不再走提示窗
+                AdventureStageWindow(
+                    self.pet_win,
+                    stage_data["adventure_name"],
+                    stage_data["stage_text"],
+                    stage_data["options"],
+                    self.on_adventure_choice,
+                    self.x, self.y, self.pet_w, self.pet_h,
+                    is_trigger=False   # 剧情窗用纯白背景
+                )
+
+            tip_win = tk.Toplevel(self.pet_win)
+            tip_win.overrideredirect(True)
+            tip_win.wm_attributes("-topmost", True)
+            tip_win.configure(bg="#FFF8E1")
+            tip_win.attributes("-alpha", 1.0)
+
+            w, h = 360, 130
+            pad = 20
+
+            tk.Label(tip_win, text=f"✨ 奇遇触发 · {stage_data['adventure_name']}",
+                     font=("Segoe UI", 12, "bold"), fg="#000000", bg="#FFF8E1"
+                     ).pack(pady=(pad, 0))
+            tk.Frame(tip_win, height=1, bg="#E5E5E5").pack(fill="x", padx=pad, pady=(8, 0))
+            tk.Label(tip_win, text="一段不寻常的遭遇正在发生……",
+                     font=("Segoe UI", 10), fg="#404040", bg="#FFF8E1"
+                     ).pack(pady=(12, 0))
+            tk.Button(tip_win, text="进入剧情", font=("Segoe UI", 10),
+                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=6,
+                      command=open_narrative).pack(pady=(12, pad))
+
+            x = self.x + (self.pet_w - w) // 2
+            y = self.y - h - 12
+            if y < 0:
+                y = self.y + self.pet_h + 12
+            tip_win.geometry(f"{w}x{h}+{x}+{y}")
+
+            def follow_tip():
+                if tip_win.winfo_exists():
+                    nx = self.x + (self.pet_w - w) // 2
+                    ny = self.y - h - 12
+                    if ny < 0:
+                        ny = self.y + self.pet_h + 12
+                    tip_win.geometry(f"+{nx}+{ny}")
+                    tip_win.after(200, follow_tip)
+            follow_tip()
+            return   # 直接返回，不创建 AdventureStageWindow
+
+        # 普通剧情窗口（包括后续阶段）
         AdventureStageWindow(
             self.pet_win,
             stage_data["adventure_name"],
@@ -160,7 +214,7 @@ class DesktopPet:
             stage_data["options"],
             self.on_adventure_choice,
             self.x, self.y, self.pet_w, self.pet_h,
-            is_trigger=is_trigger
+            is_trigger=False
         )
 
     def on_adventure_choice(self, choice_index):
