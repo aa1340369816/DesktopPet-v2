@@ -13,12 +13,13 @@ class CompanionManager:
         idle = ActivityMonitor.get_idle_seconds()
         s.idle_time = idle
         s.total_playtime += 1
-        if s.last_milestone_week and s.last_milestone_day:  # 占位，实际纪念已移除
-            pass
 
+        # 专注模式结束检查
         if s.focus_mode and now > s.focus_end_time:
             s.focus_mode = False
             self.pet.ui_manager.show_toast("🍅 专注时间结束！", 3000)
+
+        # 非专注且未休息时，健康提醒
         if not s.focus_mode and not s.resting:
             if idle > s.idle_threshold:
                 self.pet.ui_manager.show_toast("💺 坐太久啦，起来活动一下！")
@@ -29,12 +30,16 @@ class CompanionManager:
             if now - s.last_eye_reminder > s.eye_interval:
                 self.pet.ui_manager.show_toast("👀 休息一下眼睛哦")
                 s.last_eye_reminder = now
+
+        # 弹幕
         if not s.focus_mode and now - s.last_danmu_time > s.danmu_interval:
             self.pet.danmaku_manager.show_danmu()
             s.last_danmu_time = now
             s.danmu_interval = random.randint(120, 300)
+
         self.check_daytime_greeting(now)
 
+        # 原有事件调度器
         self.pet.event_scheduler.update(self.pet.pet_win)
 
         # 奇遇系统检查
