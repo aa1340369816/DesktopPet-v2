@@ -135,6 +135,26 @@ class AdventureStageWindow:
             self.win.destroy()
 
     def _choose(self, idx):
+        # 显示选项对应的结果文字（如果存在）
+        result_text = self.options[idx].get("result", "") if isinstance(self.options[idx], dict) else ""
+        if result_text:
+            for w in self.content_widgets:
+                w.destroy()
+            self.content_widgets.clear()
+            for w in self.btn_frame.winfo_children():
+                w.destroy()
+            tk.Label(self.content_frame, text=result_text, font=("Segoe UI", 10),
+                     fg="#404040", bg=self.win.cget("bg"),
+                     anchor="w", justify="left", wraplength=360).pack(fill="x", pady=2)
+            tk.Button(self.btn_frame, text="继续", font=("Segoe UI", 12),
+                      fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
+                      bd=1, relief="solid", padx=12, pady=8,
+                      command=lambda: self._finish_choice(idx)).pack(side="right", padx=4)
+            self._update_geometry()
+        else:
+            self._finish_choice(idx)
+
+    def _finish_choice(self, idx):
         self.win.destroy()
         if self.callback:
             self.callback(idx)
@@ -248,7 +268,7 @@ class AdventureManager:
         return {
             "adventure_name": adv["name"],
             "stage_text": stage["text"],
-            "options": [opt["text"] for opt in stage.get("options", [])],
+            "options": stage.get("options", []),
             "location": stage.get("location", adv.get("location", "")),
             "is_entry": is_entry          # 新增，标记是否是奇遇入口
         }
