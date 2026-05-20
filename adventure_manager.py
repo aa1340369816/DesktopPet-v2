@@ -93,16 +93,23 @@ class AdventureStageWindow:
                 lbl.pack(fill="x", pady=1)
                 self.content_widgets.append(lbl)
         else:
-            # 选项页（只有一页，所有选项同时显示）
+            # 选项页：提示放在内容区，选项按钮移到按钮区
             tk.Label(self.content_frame, text="请做出你的选择：", font=("Segoe UI", 10, "bold"),
                      fg="#000000", bg=self.win.cget("bg")).pack(anchor="w", pady=(0, 8))
+            self.content_widgets.append(self.content_frame.winfo_children()[-1])
+
+            # 按钮区放置选项按钮 + 取消
             for i, opt_text in enumerate(self.options):
-                btn = tk.Button(self.content_frame, text=opt_text, font=("Segoe UI", 10),
+                btn = tk.Button(self.btn_frame, text=opt_text, font=("Segoe UI", 10),
                                 fg="#000000", bg="#FFFFFF", activebackground="#F5F5F5",
                                 bd=1, relief="solid", padx=12, pady=8,
                                 command=lambda idx=i: self._choose(idx))
                 btn.pack(fill="x", pady=4)
-                self.content_widgets.append(btn)
+            cancel_btn = tk.Button(self.btn_frame, text="取消", font=("Segoe UI", 10),
+                                   fg="#808080", bg="#FFFFFF", activebackground="#F5F5F5",
+                                   bd=1, relief="solid", padx=12, pady=6,
+                                   command=self.win.destroy)
+            cancel_btn.pack(pady=(8, 0))
 
         # 按钮区：翻页/结束/取消
         if page_idx < self.total_pages - 1:
